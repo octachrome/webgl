@@ -1,0 +1,29 @@
+<?DOCTYPE html?>
+<html>
+<head>
+    <script type="text/x-shader" id="vertex-shader-src">
+    precision mediump float;
+    attribute vec2 vertexPosition;
+    attribute vec3 vertexColour;
+    varying vec3 fragmentColour;
+
+    void main() {
+        gl_Position = vec4(vertexPosition, 0, 1);
+        fragmentColour = vertexColour;
+    }
+    </script>
+    <script type="text/x-shader" id="fragment-shader-src">
+    precision mediump float;
+    varying vec3 fragmentColour;
+
+    void main() {
+        gl_FragColor = vec4(fragmentColour, 1);
+    }
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="webgl.js"></script>
+</head>
+<body>
+    <canvas width="800" height="600"></canvas>
+</body>
+</html>
