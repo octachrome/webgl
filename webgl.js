@@ -40,33 +40,39 @@ $(function () {
     vertexPositionAttribute = gl.getAttribLocation(program, 'vertexPosition');
     gl.enableVertexAttribArray(vertexPositionAttribute);
 
-    vertexColourAttribute = gl.getAttribLocation(program, 'vertexColour');
+/*    vertexColourAttribute = gl.getAttribLocation(program, 'vertexColour');
     gl.enableVertexAttribArray(vertexColourAttribute);
-
+*/
     var vertexPositions = [
-         0.0,  0.5,
-        -0.5, -0.5,
-         0.5, -0.5
+        -1.0, -1.0,
+        -1.0,  1.0,
+         1.0,  1.0,
+         1.0,  1.0,
+        -1.0, -1.0,
+         1.0, -1.0
     ];
 
     var vertexPositionsBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionsBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
-
+/*
     var vertexColours = [
-        1, 0, 0,
         0, 1, 0,
-        0, 0, 1
+        0, 0, 0,
+        0, 0, 1,
+        0, 0, 1,
+        0, 1, 0,
+        1, 0, 1,
     ];
 
     var vertexColoursBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexColoursBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColours), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexColourAttribute, 3, gl.FLOAT, false, 0, 0);
-
+*/
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
 });

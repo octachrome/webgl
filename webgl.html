@@ -5,19 +5,35 @@
     precision mediump float;
     attribute vec2 vertexPosition;
     attribute vec3 vertexColour;
+    varying vec2 fragmentPosition;
     varying vec3 fragmentColour;
 
     void main() {
         gl_Position = vec4(vertexPosition, 0, 1);
+        fragmentPosition = vertexPosition;
         fragmentColour = vertexColour;
     }
     </script>
     <script type="text/x-shader" id="fragment-shader-src">
     precision mediump float;
+    varying vec2 fragmentPosition;
     varying vec3 fragmentColour;
 
+    #define LOOPS 50
+    #define THRESHOLD 4.0
+
     void main() {
-        gl_FragColor = vec4(fragmentColour, 1);
+        vec2 z = vec2(fragmentPosition);
+        int j = LOOPS;
+        for (int i = 0; i < LOOPS; i++) {
+            z = vec2(fragmentPosition[0] + z[0] * z[0] - z[1] * z[1], fragmentPosition[1] + 2.0 * z[0] * z[1]);
+            if (length(z) > THRESHOLD) {
+                j = i;
+                break;
+            }
+        }
+        float colour = float(j) / float(LOOPS);
+        gl_FragColor = vec4(colour, colour, colour, 1);
     }
     </script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
