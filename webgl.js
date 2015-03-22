@@ -43,30 +43,33 @@ $(function () {
     vertexColourAttribute = gl.getAttribLocation(program, 'vertexColour');
     gl.enableVertexAttribArray(vertexColourAttribute);
 
-    var vertexPositions = [
-         0.0,  0.5,
-        -0.5, -0.5,
-         0.5, -0.5
-    ];
+    var vertexPositions = [];
+    var vertexColours = [];
+
+    for (var i = 0; i < 100; i++) {
+        vertexPositions.push(Math.random() * 2 - 1); // x
+        vertexPositions.push(Math.random() * 2 - 1); // y
+        vertexColours.push(Math.random()); // red
+        vertexColours.push(Math.random()); // green
+        vertexColours.push(Math.random()); // blue
+    }
 
     var vertexPositionsBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionsBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 
-    var vertexColours = [
-        1, 0, 0,
-        0, 1, 0,
-        0, 0, 1
-    ];
-
     var vertexColoursBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexColoursBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColours), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexColourAttribute, 3, gl.FLOAT, false, 0, 0);
 
-    gl.clearColor(0, 0, 0, 1);
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    gl.clearColor(1, 1, 1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.drawArrays(gl.POINTS, 0, i);
 });
