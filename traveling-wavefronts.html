@@ -92,7 +92,10 @@ void main(void) {
 	
 	vec2 zoom_in = pixel + vec2(dx.x,dy.x)*pixelSize*8.; // adding the traveling wave front
 	vec2 rand_noise = texture2D(sampler_noise, zoom_in + vec2(rnd.x, rnd.y)).xy;
+	// if 0.002 is decreased, the blue fills the screen; if increased, it drains away
+	// if 0.0025 is decreased, an unmoving equilibrium is reached; if increased, the reaction speeds up
 	gl_FragColor.x = texture2D(sampler_prev, zoom_in).x + (rand_noise.x-0.5)*0.0025 - 0.002; // decay with error diffusion
+	// if 0.047 is decreased, the blue drains away; if increased, the reaction speeds up
 	gl_FragColor.x -= (texture2D(sampler_blur, zoom_in + (rand_noise-0.5)*pixelSize).x -
 					  texture2D(sampler_prev, zoom_in + (rand_noise-0.5)*pixelSize)).x*0.047; // reaction-diffusion
 
@@ -132,14 +135,12 @@ void main(void) {
 
 	vec2 displacement = vec2(dx.x,dy.x)*lightSize; // using only the red gradient as displacement vector
 	float light = pow(max(1.-distance(0.5+(pixel-0.5)*aspect*lightSize + displacement,0.5+(mouse-0.5)*aspect*lightSize),0.),4.);
-//	vec4 rd = 0.85-(1.-texture2D(sampler_prev,pixel-vec2(dx.x,dy.x)*pixelSize*2.5).x) + light*0.18;
-	//rd = mix(rd, 1., light*(1.-texture2D(sampler_blur,pixel-vec2(dx.x,dy.x)*pixelSize*4.)).x); 
 
 	// recoloring the lit up red channel
 	vec4 rd = vec4(texture2D(sampler_prev,pixel+vec2(dx.x,dy.x)*pixelSize*8.).x)*vec4(0.7,1.5,2.0,1.0)-vec4(0.3,1.0,1.0,1.0);
 	gl_FragColor = mix(rd,vec4(8.0,6.,2.,1.), light*0.75*vec4(1.-texture2D(sampler_prev,pixel+vec2(dx.x,dy.x)*pixelSize*8.).x)); 
 	
-	//gl_FragColor = texture2D(sampler_prev, pixel); // bypass
+	// gl_FragColor = texture2D(sampler_prev, pixel); // bypass
 	gl_FragColor.a = 1.;
 }
 </script>
