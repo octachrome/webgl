@@ -20,7 +20,7 @@
     uniform sampler2D noiseTexture;
     varying vec2 fragmentPosition;
 
-    float noise(vec2 pos, float scale) {
+    float noise2d(vec2 pos, float scale) {
         // pos is from fragmentPosition, which ranges from -1 to 1
         // move it to texture pixel space (0 to 1023, but it can wrap)
         vec2 scaled = scale * pos;
@@ -45,30 +45,43 @@
 
     // iters should be [1,5] or so
     // persist should be [0,1]
-    float octaveNoise(vec2 pos, float scale, int iters, float persist) {
+    float octaveNoise2d(vec2 pos, float scale, int iters, float persist) {
         float result = 0.0;
         float factor = 1.0;
         for (int i = 0; i < 64; i++) {
             if (i >= iters) {
                 break;
             }
-            result += factor * noise(pos, scale);
+            result += factor * noise2d(pos, scale);
             scale *= 2.0;
             factor *= persist;
         }
         return result;
     }
 
-    #define SCALE 10.0
+    #define SCALE 10.
 
     void main() {
-        float result = octaveNoise(fragmentPosition + 1.0, SCALE, 8, 0.8) / 2.0 + 0.5;
-        if (result <= 0.5) {
-            // result = 0.0;
+        vec2 pos = floor(fragmentPosition * 128.) / 128.;
+        float limit = octaveNoise2d(vec2(pos.x / 6., 1.), SCALE, 5, 0.5);
+        if (pos.y + 0.5 < limit / 4.) {
+            float result = (octaveNoise2d(pos + 1.0, SCALE / 2., 4, 0.65) + 1.) / 2.0;
+            int idx = int(floor(result * 8.));
+            if (idx == 7) {
+                gl_FragColor = vec4(156., 168., 100., 255.) / 255.;
+            } else if (idx == 6) {
+                gl_FragColor = vec4(104., 112., 52., 255.) / 255.;
+            } else if (idx == 0) {
+                gl_FragColor = vec4(160., 132., 68., 255.) / 255.;
+            } else if (idx == 1) {
+                gl_FragColor = vec4(100., 72., 24., 255.) / 255.;
+            } else {
+                float grey = 65. + 45. * float(idx - 2);
+                gl_FragColor = vec4(grey, grey, grey, 255.) / 255.;
+            }
         } else {
-            result = 1.0;
+            gl_FragColor = vec4(124., 180., 212., 255.) / 255.;
         }
-        gl_FragColor = vec4(result, result, result, 1.0);
     }
 
     </script>
