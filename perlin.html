@@ -17,6 +17,7 @@
     <script type="text/x-shader" id="fragment-shader-src">
     precision mediump float;
 
+    uniform float offset;
     uniform sampler2D noiseTexture;
     varying vec2 fragmentPosition;
 
@@ -62,24 +63,59 @@
     #define SCALE 10.
 
     void main() {
-        vec2 pos = floor(fragmentPosition * 128.) / 128.;
-        float limit = octaveNoise2d(vec2(pos.x / 6., 1.), SCALE, 5, 0.5);
+        // discretise the screen coords
+        vec2 pos = floor((fragmentPosition + vec2(offset, 0.)) * 128.) / 128.;
+        // height of sea floor
+        float limit = octaveNoise2d(vec2(pos.x / 8., 1.), SCALE, 6, 0.6);
         if (pos.y + 0.5 < limit / 4.) {
-            float result = (octaveNoise2d(pos + 1.0, SCALE / 2., 4, 0.65) + 1.) / 2.0;
-            int idx = int(floor(result * 8.));
-            if (idx == 7) {
-                gl_FragColor = vec4(156., 168., 100., 255.) / 255.;
-            } else if (idx == 6) {
-                gl_FragColor = vec4(104., 112., 52., 255.) / 255.;
-            } else if (idx == 0) {
-                gl_FragColor = vec4(160., 132., 68., 255.) / 255.;
-            } else if (idx == 1) {
-                gl_FragColor = vec4(100., 72., 24., 255.) / 255.;
+            // lightness
+            float result = 1. - abs(octaveNoise2d((pos + 1.0) * vec2(1., .5), SCALE / 1.5, 6, 0.6));
+            float grey;
+            if (result > 0.995) {
+                grey = .9;
+            } else if (result > 0.97) {
+                grey = .8;
+            } else if (result > 0.85) {
+                grey = .7;
             } else {
-                float grey = 65. + 45. * float(idx - 2);
-                gl_FragColor = vec4(grey, grey, grey, 255.) / 255.;
+                grey = floor(result * 5.) / 5. * .8;
+            }
+            // rock or weed
+            float type = abs(octaveNoise2d((pos + 1.) * .1, SCALE, 8, 0.7));
+            if (type < 0.05) {
+                int idx = int(grey * 5.);
+                if (fract(type * 20.) < 0.5) {
+                    // greens
+                    if (idx == 0) {
+                        gl_FragColor = vec4(44., 48., 0., 255.) / 255.;
+                    } else if (idx == 1) {
+                        gl_FragColor = vec4(76., 80., 28., 255.) / 255.;
+                    } else if (idx == 2) {
+                        gl_FragColor = vec4(132., 140., 76., 255.) / 255.;
+                    } else if (idx == 3) {
+                        gl_FragColor = vec4(156., 168., 100., 255.) / 255.;
+                    } else if (idx == 4) {
+                        gl_FragColor = vec4(180., 192., 120., 255.) / 255.;
+                    }
+                } else {
+                    // browns
+                    if (idx == 0) {
+                        gl_FragColor = vec4(27., 68., 40., 255.) / 255.;
+                    } else if (idx == 1) {
+                        gl_FragColor = vec4(100., 72., 24., 255.) / 255.;
+                    } else if (idx == 2) {
+                        gl_FragColor = vec4(132., 104., 48., 255.) / 255.;
+                    } else if (idx == 3) {
+                        gl_FragColor = vec4(160., 132., 68., 255.) / 255.;
+                    } else if (idx == 4) {
+                        gl_FragColor = vec4(184., 156., 88., 255.) / 255.;
+                    }
+                }
+            } else {
+                gl_FragColor = vec4(grey, grey, grey, 1.);
             }
         } else {
+            // sea
             gl_FragColor = vec4(124., 180., 212., 255.) / 255.;
         }
     }

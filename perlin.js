@@ -71,7 +71,14 @@ $(function () {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 
+    var offsetUniform = gl.getUniformLocation(program, "offset");
+
+    var offset = 0;
+
     function drawFrame() {
+        gl.uniform1f(offsetUniform, offset);
+        offset += .001;
+
         // clear screen
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
