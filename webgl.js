@@ -1,3 +1,4 @@
+// Basic WebGL demo - Mandelbrot
 $(function () {
     var canvas = $('canvas')[0];
 
@@ -37,10 +38,6 @@ $(function () {
     vertexPositionAttribute = gl.getAttribLocation(program, 'vertexPosition');
     gl.enableVertexAttribArray(vertexPositionAttribute);
 
-/*    vertexColourAttribute = gl.getAttribLocation(program, 'vertexColour');
-    gl.enableVertexAttribArray(vertexColourAttribute);
-*/
-
     // this unform is used to specify the viewport for the fractal
     var viewportUniform = gl.getUniformLocation(program, 'viewport');
 
@@ -60,21 +57,6 @@ $(function () {
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionsBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
-/*
-    var vertexColours = [
-        0, 1, 0,
-        0, 0, 0,
-        0, 0, 1,
-        0, 0, 1,
-        0, 1, 0,
-        1, 0, 1,
-    ];
-
-    var vertexColoursBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexColoursBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColours), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(vertexColourAttribute, 3, gl.FLOAT, false, 0, 0);
-*/
 
     // the screen is centred on these coordinates
     var centreX = -0.5;
@@ -105,7 +87,7 @@ $(function () {
         scaleX *= 0.997;
         scaleY *= 0.997;
 
-        // calculate top-left value
+        // calculate top-left coordinate
         var x = centreX - scaleX / 2;
         var y = centreY - scaleY / 2;
         // set the viewport

@@ -1,20 +1,18 @@
 <?DOCTYPE html?>
+<!-- Basic WebGL demo - Mandelbrot -->
 <html>
 <head>
     <script type="text/x-shader" id="vertex-shader-src">
     precision mediump float;
 
     attribute vec2 vertexPosition;
-    attribute vec3 vertexColour; // unused
     varying vec2 fragmentPosition;
-    varying vec3 fragmentColour; // unused
 
     void main() {
         // convert the 2d position to a 4d vector
         gl_Position = vec4(vertexPosition, 0, 1);
         // interpolate coords over the whole screen
         fragmentPosition = vertexPosition;
-        fragmentColour = vertexColour; // unused
     }
     </script>
     <script type="text/x-shader" id="fragment-shader-src">
@@ -23,7 +21,6 @@
     // [minx, miny, width, height]
     uniform vec4 viewport;
     varying vec2 fragmentPosition;
-    varying vec3 fragmentColour; // unused
 
     #define MAX_ITER 150 // maximum number of iterations
     #define THRESHOLD 4.0 // if this value is exceeded, the loop stops
@@ -58,6 +55,7 @@
     <script src="webgl.js"></script>
 </head>
 <body>
+    <h1>Hello WebGL</h1>
     <canvas width="1024" height="720"></canvas>
 </body>
 </html>
