@@ -56,35 +56,54 @@ $(function () {
 
     // two triangles which cover the whole screen
     // they use normalized device coordinates, to save convering them in the vertex shader
-    var vertexPositions = [
+    var backgroundTriangleFan = [
         -1.0, -1.0,
         -1.0,  1.0,
          1.0,  1.0,
-
-         1.0,  1.0,
-        -1.0, -1.0,
          1.0, -1.0
     ];
 
+    var bubblePoints = [];
+    for (var i = 0; i < 10; i++) {
+        bubblePoints.push(Math.random() * 2 - 1);
+        bubblePoints.push(Math.random() * 2 - 1);
+    }
+
     var vertexPositionsBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 
     var offsetUniform = gl.getUniformLocation(program, "offset");
-
     var offset = 0;
 
+    var shaderModeUniform = gl.getUniformLocation(program, "shaderMode");
+
     function drawFrame() {
+        // scroll
         gl.uniform1f(offsetUniform, offset);
         offset += .001;
+
+        // move the bubbles
+        for (i = 0; i < bubblePoints.length; i += 2) {
+            // x
+            bubblePoints[i] += Math.random() * .001 - .0005;
+            // y
+            bubblePoints[i+1] += .001;
+        }
 
         // clear screen
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        // draw the two triangles
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        // draw the background (two triangles)
+        gl.uniform1i(shaderModeUniform, 0);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(backgroundTriangleFan), gl.STATIC_DRAW);
+        gl.drawArrays(gl.TRIANGLE_FAN, 0, backgroundTriangleFan.length / 2);
+
+        // draw the bubbles
+        gl.uniform1i(shaderModeUniform, 1);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bubblePoints), gl.STATIC_DRAW);
+        gl.drawArrays(gl.POINTS, 0, bubblePoints.length / 2);
     }
 
     (function animationFrame() {

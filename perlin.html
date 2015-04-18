@@ -12,11 +12,14 @@
         gl_Position = vec4(vertexPosition, 0, 1);
         // interpolate coords over the whole screen
         fragmentPosition = vertexPosition;
+        // bubbles are 4px across
+        gl_PointSize = 4.;
     }
     </script>
     <script type="text/x-shader" id="fragment-shader-src">
     precision mediump float;
 
+    uniform int shaderMode;
     uniform float offset;
     uniform sampler2D noiseTexture;
     varying vec2 fragmentPosition;
@@ -62,7 +65,7 @@
 
     #define SCALE 10.
 
-    void main() {
+    void background() {
         // discretise the screen coords
         vec2 pos = floor((fragmentPosition + vec2(offset, 0.)) * 128.) / 128.;
         // height of sea floor
@@ -117,6 +120,18 @@
         } else {
             // sea
             gl_FragColor = vec4(124., 180., 212., 255.) / 255.;
+        }
+    }
+
+    void bubbles() {
+        gl_FragColor = vec4(1., 1., 1., 1.);
+    }
+
+    void main() {
+        if (shaderMode == 0) {
+            background();
+        } else {
+            bubbles();
         }
     }
 
