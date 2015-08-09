@@ -5,53 +5,37 @@
     <script type="text/x-shader" id="vertex-shader-src">
     precision mediump float;
 
+    uniform float aspect;
+
     attribute vec2 vertexPosition;
     varying vec2 fragmentPosition;
 
     void main() {
         // convert the 2d position to a 4d vector
         gl_Position = vec4(vertexPosition, 0, 1);
-        // interpolate coords over the whole screen
-        fragmentPosition = vertexPosition;
+        // interpolate coords over the whole screen, scaled by aspect ratio
+        fragmentPosition = vec2(vertexPosition.x * aspect, vertexPosition.y);
     }
     </script>
     <script type="text/x-shader" id="fragment-shader-src">
     precision mediump float;
 
-    // [minx, miny, width, height]
-    uniform vec4 viewport;
     varying vec2 fragmentPosition;
 
-    #define MAX_ITER 150 // maximum number of iterations
-    #define THRESHOLD 4.0 // if this value is exceeded, the loop stops
+    #define BLACK vec4(51, 51, 41, 255)
+    #define WHITE vec4(255, 255, 240, 255)
 
     void main() {
-        // calculate the starting value by scaling the normalized coords to the viewport
-        // normalized coords both run from -1 to 1 (width and height of 2)
-        vec2 c = vec2(
-            (fragmentPosition[0] + 1.0) / 2.0 * viewport[2] + viewport[0],
-            (fragmentPosition[1] + 1.0) / 2.0 * viewport[3] + viewport[1]
-        );
-        // z starts from c
-        vec2 z = vec2(c);
-        // GLSL doesn't allow the loop variable, i, to be accessed from outside the loop
-        // if the loop breaks, iterations will take this value
-        int iterations = MAX_ITER;
-        for (int i = 0; i < MAX_ITER; i++) {
-            // square z and add c
-            z = vec2(c[0] + z[0] * z[0] - z[1] * z[1], c[1] + 2.0 * z[0] * z[1]);
-            if (length(z) > THRESHOLD) {
-                // record the # iterations at which the threshold was exceeded, and break the loop
-                iterations = i;
-                break;
-            }
+        float dist = distance(fragmentPosition, vec2(0, 0));
+
+        if (dist < 0.5) {
+            gl_FragColor = BLACK / 255.;
+        } else {
+            gl_FragColor = WHITE / 255.;
         }
-        // grey shade determined by number of iterations
-        float shade = float(iterations) / float(MAX_ITER);
-        gl_FragColor = vec4(shade, shade, shade, 1);
     }
     </script>
-    <script src="jquery-1.2.4.js"></script>
+    <script src="jquery-2.1.4.js"></script>
     <script src="webgl.js"></script>
 </head>
 <body>
