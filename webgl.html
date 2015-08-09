@@ -20,17 +20,29 @@
     <script type="text/x-shader" id="fragment-shader-src">
     precision mediump float;
 
+    uniform float time;
+
     varying vec2 fragmentPosition;
 
     #define BLACK vec4(51, 51, 41, 255)
     #define WHITE vec4(255, 255, 240, 255)
 
+    const float PI = 3.1415926535898;
+
     void main() {
         float dist = distance(fragmentPosition, vec2(0, 0));
+        float angle = atan(fragmentPosition.x, fragmentPosition.y) + PI;
+        float d = mod((dist + angle * 100. + .1 * time) * 15., 1.);
 
-        if (dist < 0.5) {
+        if (d < 0.05) {
+            gl_FragColor = mix(WHITE, BLACK, (d + .05) * 10.) / 255.;
+        } else if (d > 0.95) {
+            gl_FragColor = mix(WHITE, BLACK, (d - .95) * 10.) / 255.;
+        } else if (d > 0.45 && d < 0.55) {
+            gl_FragColor = mix(BLACK, WHITE, (d - .45) * 10.) / 255.;
+        } else if (d <= .45) {
             gl_FragColor = BLACK / 255.;
-        } else {
+        } else if (d >= .55) {
             gl_FragColor = WHITE / 255.;
         }
     }
@@ -39,7 +51,6 @@
     <script src="webgl.js"></script>
 </head>
 <body>
-    <h1>Hello WebGL</h1>
     <canvas width="1024" height="720"></canvas>
 </body>
 </html>

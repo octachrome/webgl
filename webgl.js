@@ -1,5 +1,7 @@
 // Basic WebGL demo - Mandelbrot
 $(function () {
+    var RATE = 0.001;
+
     var canvas = $('canvas')[0];
     var aspect = canvas.width / canvas.height;
 
@@ -43,6 +45,9 @@ $(function () {
     var aspectUniform = gl.getUniformLocation(program, 'aspect');
     gl.uniform1f(aspectUniform, aspect);
 
+    // Time in radians (it loops)
+    var timeUniform = gl.getUniformLocation(program, 'time');
+
     // two triangles which cover the whole screen
     // they use normalized device coordinates, to save convering them in the vertex shader
     var vertexPositions = [
@@ -60,7 +65,15 @@ $(function () {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 
+    var start = new Date().getTime();
+
     function drawFrame() {
+        var time = (new Date().getTime() - start) * RATE;
+        while (time > Math.PI * 2) {
+            time -= Math.PI * 2;
+        }
+        gl.uniform1f(timeUniform, time);
+
         // clear screen
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
