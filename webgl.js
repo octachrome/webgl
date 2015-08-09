@@ -69,7 +69,7 @@ $(function () {
 
     function drawFrame() {
         var time = (new Date().getTime() - start) * RATE;
-        while (time > Math.PI * 2) {
+        while (time >= Math.PI * 2) {
             time -= Math.PI * 2;
         }
         gl.uniform1f(timeUniform, time);

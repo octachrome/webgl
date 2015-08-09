@@ -24,26 +24,29 @@
 
     varying vec2 fragmentPosition;
 
-    #define BLACK vec4(51, 51, 41, 255)
-    #define WHITE vec4(255, 255, 240, 255)
+    const vec4 BLACK = vec4(51, 51, 41, 255) / 255.;
+    const vec4 WHITE = vec4(255, 255, 240, 255) / 255.;
 
     const float PI = 3.1415926535898;
+    const float EDGE = 0.01;
 
     void main() {
         float dist = distance(fragmentPosition, vec2(0, 0));
         float angle = atan(fragmentPosition.x, fragmentPosition.y) + PI;
-        float d = mod((dist + angle * 100. + .1 * time) * 15., 1.);
+        // Why is .159 magic?
+        float d = mod(dist * 5. + angle * .159 - 3. * time / PI, 1.);
 
-        if (d < 0.05) {
-            gl_FragColor = mix(WHITE, BLACK, (d + .05) * 10.) / 255.;
-        } else if (d > 0.95) {
-            gl_FragColor = mix(WHITE, BLACK, (d - .95) * 10.) / 255.;
-        } else if (d > 0.45 && d < 0.55) {
-            gl_FragColor = mix(BLACK, WHITE, (d - .45) * 10.) / 255.;
-        } else if (d <= .45) {
-            gl_FragColor = BLACK / 255.;
-        } else if (d >= .55) {
-            gl_FragColor = WHITE / 255.;
+        // Anti-aliasing nonsense.
+        if (d < EDGE) {
+            gl_FragColor = mix(WHITE, BLACK, (d + EDGE) * 10.);
+        } else if (d > 1. - EDGE) {
+            gl_FragColor = mix(WHITE, BLACK, (d - 1. + EDGE) * 10.);
+        } else if (d > .5 - EDGE && d < .5 + EDGE) {
+            gl_FragColor = mix(BLACK, WHITE, (d - .5 + EDGE) * 10.);
+        } else if (d <= .5 - EDGE) {
+            gl_FragColor = BLACK;
+        } else if (d >= .5 + EDGE) {
+            gl_FragColor = WHITE;
         }
     }
     </script>
