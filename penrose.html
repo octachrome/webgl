@@ -68,9 +68,7 @@ half dart:
 
     vec4 calcColour(int triangleType, vec2 t0, vec2 t1, vec2 t2) {
         vec4 colour;
-        if (triangleType == NONE) {
-            colour = vec4(0, 0, 0, 255);
-        } else if (triangleType == HALF_DART) {
+        if (triangleType == HALF_DART) {
             colour = DART_COLOUR;
         } else {
             colour = KITE_COLOUR;
@@ -153,11 +151,16 @@ half dart:
             }
         }
 
-        vec4 colour = calcColour(triangleType, t0, t1, t2);
-        vec4 prev_colour = calcColour(prev_triangleType, prev_t0, prev_t1, prev_t2);
+        if (triangleType == NONE) {
+            gl_FragColor = vec4(0, 0, 0, 255);
+        } else {
+            vec4 colour = calcColour(triangleType, t0, t1, t2);
+            vec4 prev_colour = calcColour(prev_triangleType, prev_t0, prev_t1, prev_t2);
 
-        float ratio = 0.;// - time;
-        gl_FragColor = mix(colour, prev_colour, ratio);
+            float ratio = 1. - fract(time);
+            float ease = 3. * ratio * ratio - 2. * ratio * ratio * ratio;
+            gl_FragColor = mix(colour, prev_colour, ease);
+        }
     }
     </script>
     <script src="jquery-2.1.4.js"></script>

@@ -72,8 +72,6 @@ $(function () {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 
-    var start = new Date().getTime();
-
     var triangleType;
     var t0;
     var t1;
@@ -81,10 +79,16 @@ $(function () {
     var sign;
 
     function initTriangle() {
+        // Starting half-kite that fills the screen.
         triangleType = HALF_KITE;
-        t0 = [2.5, -2.5];
-        t1 = [0.954915021, 2.25528257925];
-        t2 = [-7.5, -2.5];
+        var scale = 0.1;
+        t0 = vectorScale(scale, [3.5, -1.5]);
+        t1 = vectorScale(scale, [1.954915021, 3.25528257925]);
+        t2 = vectorScale(scale, [-6.5, -1.5]);
+        var centre = vectorScale(1/3, vectorAdd(t0, vectorAdd(t1, t2)));
+        t0 = vectorSub(t0, centre);
+        t1 = vectorSub(t1, centre);
+        t2 = vectorSub(t2, centre);
         sign = 1;
     }
     initTriangle();
@@ -132,17 +136,31 @@ $(function () {
         }
     }
 
-    function drawFrame() {
-        // Starting half-kite that fills the screen.
-        gl.uniform1i(triangleTypeUniform, triangleType);
-        gl.uniform2f(t0Uniform, t0[0], t0[1]);
-        gl.uniform2f(t1Uniform, t1[0], t1[1]);
-        gl.uniform2f(t2Uniform, t2[0], t2[1]);
-        gl.uniform1f(signUniform, sign);
+    var start = new Date().getTime();
+    var lastTime;
 
-        var time = (new Date().getTime() - start) * RATE;
-        time = time - Math.floor(time);
+    function drawFrame() {
+        var time = 1 + (new Date().getTime() - start) * RATE;
         gl.uniform1f(timeUniform, time);
+
+        if (lastTime && Math.floor(time) != Math.floor(lastTime)) {
+            nextTriangle([0, 0]);
+        }
+        lastTime = time;
+
+        // var centre = vectorScale(1/3, vectorAdd(t0, vectorAdd(t1, t2)));
+        var centre = [0.2, 0];
+
+        var scale = Math.pow(2, time);
+        var scaled_t0 = vectorScaleAbout(scale, centre, t0);
+        var scaled_t1 = vectorScaleAbout(scale, centre, t1);
+        var scaled_t2 = vectorScaleAbout(scale, centre, t2);
+
+        gl.uniform1i(triangleTypeUniform, triangleType);
+        gl.uniform2f(t0Uniform, scaled_t0[0], scaled_t0[1]);
+        gl.uniform2f(t1Uniform, scaled_t1[0], scaled_t1[1]);
+        gl.uniform2f(t2Uniform, scaled_t2[0], scaled_t2[1]);
+        gl.uniform1f(signUniform, sign);
 
         // clear screen
         gl.clearColor(0, 0, 0, 1);
@@ -173,5 +191,9 @@ $(function () {
         var line1 = vectorSub(v1, origin);
         var line2 = vectorSub(v2, origin);
         return v1[0] * v2[1] - v1[1] * v2[0];
+    }
+
+    function vectorScaleAbout(factor, centre, v) {
+        return vectorAdd(centre, vectorScale(factor, vectorAdd(v, vectorScale(-1, centre))));
     }
 });
