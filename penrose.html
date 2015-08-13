@@ -25,6 +25,7 @@
 
     const vec4 KITE_COLOUR = vec4(0, 153, 51, 255) / 255.;
     const vec4 DART_COLOUR = vec4(102, 204, 255, 255) / 255.;
+    const vec4 EDGE_COLOUR = vec4(255, 12, 12, 255) / 255.;
 
     const float PI = 3.1415926535898;
     const float EDGE = 0.002;
@@ -68,7 +69,6 @@ half dart:
         vec2 t0 = vec2(2.5, -2.5) * scale;
         vec2 t1 = vec2(0.954915021, 2.25528257925) * scale;
         float sign = 1.;
-        float minc = 1.; // This tracks the distance from the fragmentPosition to the nearest tile edge
 
         for (int i = 0; i < ITERATIONS; i++) {
             if (sign * cross2d(t0, t1, fragmentPosition) < 0. ||
@@ -80,8 +80,7 @@ half dart:
                 vec2 p0 = t2; // apex of the triangle, sitting on its wide base
                 vec2 p1 = t0 + PHI_INV * (t1 - t0); // point near the right of the base
 
-                float c = cross2d(p1, p0, fragmentPosition);
-                if (sign * c < 0.) {
+                if (sign * cross2d(p1, p0, fragmentPosition) < 0.) {
                     t0 = t1;
                     t1 = t2;
                     t2 = p1;
@@ -94,7 +93,6 @@ half dart:
                     triangleType = HALF_KITE;
                     sign *= -1.; // this one is flipped
                 }
-                minc = min(minc, abs(c) / length(p1 - p0));
             } else {
                 vec2 p0 = t2 + PHI_INV * (t0 - t2); // point near the bottom of the left side
                 vec2 p1 = t1 + PHI_INV * (t2 - t1); // point near the top of the right side
@@ -104,14 +102,12 @@ half dart:
                 vec3 line2 = vec3(fragmentPosition - p0, 0);
                 vec3 line3 = vec3(p2 - p0, 0);
 
-                float c = cross2d(p0, p1, fragmentPosition);
-                float d = cross2d(p0, p2, fragmentPosition);
-                if (sign * c > 0.) {
+                if (sign * cross2d(p0, p1, fragmentPosition) > 0.) {
                     t0 = t2;
                     t1 = p0;
                     t2 = p1;
                     triangleType = HALF_DART;
-                } else if (sign * d > 0.) {
+                } else if (sign * cross2d(p0, p2, fragmentPosition)  > 0.) {
                     t2 = t1;
                     t0 = p0;
                     t1 = p1;
@@ -123,8 +119,6 @@ half dart:
                     t0 = p0;
                     triangleType = HALF_KITE;
                 }
-                minc = min(minc, abs(c) / length(p0 - p1));
-                minc = min(minc, abs(d) / length(p0 - p2));
             }
         }
 
@@ -136,8 +130,13 @@ half dart:
         } else {
             colour = KITE_COLOUR;
         }
-        if (minc < EDGE) {
-            gl_FragColor = mix(colour, vec4(0., 0., 0., 255.), 1. - minc / EDGE);
+
+        float d0 = abs(cross2d(t1, t2, fragmentPosition)) / length(t1 - t2);
+        float d2 = abs(cross2d(t0, t1, fragmentPosition)) / length(t0 - t1);
+        float distNearestEdge = min(d0, d2);
+
+        if (distNearestEdge < EDGE) {
+            gl_FragColor = mix(colour, vec4(0., 0., 0., 255.), 1. - distNearestEdge / EDGE);
         } else {
             gl_FragColor = colour;
         }
