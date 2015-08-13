@@ -20,6 +20,11 @@
     precision mediump float;
 
     uniform float time;
+    uniform vec2 start_t0;
+    uniform vec2 start_t1;
+    uniform vec2 start_t2;
+    uniform float start_sign;
+    uniform int start_triangleType;
 
     varying vec2 fragmentPosition;
 
@@ -61,21 +66,51 @@ half dart:
         return cross(line1, line2).z;
     }
 
+    vec4 calcColour(int triangleType, vec2 t0, vec2 t1, vec2 t2) {
+        vec4 colour;
+        if (triangleType == NONE) {
+            colour = vec4(0, 0, 0, 255);
+        } else if (triangleType == HALF_DART) {
+            colour = DART_COLOUR;
+        } else {
+            colour = KITE_COLOUR;
+        }
+
+        float d0 = abs(cross2d(t1, t2, fragmentPosition)) / length(t1 - t2);
+        float d2 = abs(cross2d(t0, t1, fragmentPosition)) / length(t0 - t1);
+        float distNearestEdge = min(d0, d2);
+
+        if (distNearestEdge < EDGE) {
+            return mix(colour, vec4(0., 0., 0., 255.), 1. - distNearestEdge / EDGE);
+        } else {
+            return colour;
+        }
+    }
+
     void main() {
-        // Starting half-kite that fills the screen.
-        int triangleType = HALF_KITE;
-        float scale = 1.;
-        vec2 t2 = vec2(-7.5, -2.5) * scale;
-        vec2 t0 = vec2(2.5, -2.5) * scale;
-        vec2 t1 = vec2(0.954915021, 2.25528257925) * scale;
-        float sign = 1.;
+        int triangleType = start_triangleType;
+        vec2 t0 = start_t0;
+        vec2 t1 = start_t1;
+        vec2 t2 = start_t2;
+        float sign = start_sign;
+
+        int prev_triangleType = triangleType;
+        vec2 prev_t2 = t2;
+        vec2 prev_t0 = t0;
+        vec2 prev_t1 = t1;
 
         for (int i = 0; i < ITERATIONS; i++) {
+            prev_triangleType = triangleType;
+            prev_t2 = t2;
+            prev_t0 = t0;
+            prev_t1 = t1;
+
             if (sign * cross2d(t0, t1, fragmentPosition) < 0. ||
                 sign * cross2d(t0, t2, fragmentPosition) > 0. ||
                 sign * cross2d(t1, t2, fragmentPosition) < 0.) {
 
                 triangleType = NONE;
+                break;
             } else if (triangleType == HALF_DART) {
                 vec2 p0 = t2; // apex of the triangle, sitting on its wide base
                 vec2 p1 = t0 + PHI_INV * (t1 - t0); // point near the right of the base
@@ -122,28 +157,15 @@ half dart:
             }
         }
 
-        vec4 colour;
-        if (triangleType == NONE) {
-            colour = vec4(0, 0, 0, 255);
-        } else if (triangleType == HALF_DART) {
-            colour = DART_COLOUR;
-        } else {
-            colour = KITE_COLOUR;
-        }
+        vec4 colour = calcColour(triangleType, t0, t1, t2);
+        vec4 prev_colour = calcColour(prev_triangleType, prev_t0, prev_t1, prev_t2);
 
-        float d0 = abs(cross2d(t1, t2, fragmentPosition)) / length(t1 - t2);
-        float d2 = abs(cross2d(t0, t1, fragmentPosition)) / length(t0 - t1);
-        float distNearestEdge = min(d0, d2);
-
-        if (distNearestEdge < EDGE) {
-            gl_FragColor = mix(colour, vec4(0., 0., 0., 255.), 1. - distNearestEdge / EDGE);
-        } else {
-            gl_FragColor = colour;
-        }
+        float ratio = 0.;// - time;
+        gl_FragColor = mix(colour, prev_colour, ratio);
     }
     </script>
     <script src="jquery-2.1.4.js"></script>
-    <script src="webgl.js"></script>
+    <script src="penrose.js"></script>
 </head>
 <body>
     <canvas width="1024" height="720"></canvas>
