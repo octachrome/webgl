@@ -81,7 +81,7 @@ $(function () {
     function initTriangle() {
         // Starting half-kite that fills the screen.
         triangleType = HALF_KITE;
-        var scale = 0.1;
+        var scale = .5;
         t0 = vectorScale(scale, [3.5, -1.5]);
         t1 = vectorScale(scale, [1.954915021, 3.25528257925]);
         t2 = vectorScale(scale, [-6.5, -1.5]);
@@ -136,30 +136,37 @@ $(function () {
         }
     }
 
-    var start = new Date().getTime();
-    var lastTime;
+    var lastTime = new Date().getTime();
+    var time = 0;
 
     function drawFrame() {
-        var time = 1 + (new Date().getTime() - start) * RATE;
+        var delta = (new Date().getTime() - lastTime) * RATE;
+        lastTime = new Date().getTime();
+
+        time += delta;
+        if (time >= 1) {
+            time -= 1;
+            // Not sure why this point works, but it does.
+            nextTriangle([-10, 10]);
+        }
+
         gl.uniform1f(timeUniform, time);
 
-        if (lastTime && Math.floor(time) != Math.floor(lastTime)) {
-            nextTriangle([0, 0]);
-        }
-        lastTime = time;
+        var centre = vectorScale(1/3, vectorAdd(t0, vectorAdd(t1, t2)));
+        t0 = vectorAdd(t0, vectorScale(-delta, centre));
+        t1 = vectorAdd(t1, vectorScale(-delta, centre));
+        t2 = vectorAdd(t2, vectorScale(-delta, centre));
 
-        // var centre = vectorScale(1/3, vectorAdd(t0, vectorAdd(t1, t2)));
-        var centre = [0.2, 0];
-
-        var scale = Math.pow(2, time);
-        var scaled_t0 = vectorScaleAbout(scale, centre, t0);
-        var scaled_t1 = vectorScaleAbout(scale, centre, t1);
-        var scaled_t2 = vectorScaleAbout(scale, centre, t2);
+        var origin = [0, 0];
+        var scale = Math.pow(PHI, delta);
+        t0 = vectorScaleAbout(scale, origin, t0);
+        t1 = vectorScaleAbout(scale, origin, t1);
+        t2 = vectorScaleAbout(scale, origin, t2);
 
         gl.uniform1i(triangleTypeUniform, triangleType);
-        gl.uniform2f(t0Uniform, scaled_t0[0], scaled_t0[1]);
-        gl.uniform2f(t1Uniform, scaled_t1[0], scaled_t1[1]);
-        gl.uniform2f(t2Uniform, scaled_t2[0], scaled_t2[1]);
+        gl.uniform2f(t0Uniform, t0[0], t0[1]);
+        gl.uniform2f(t1Uniform, t1[0], t1[1]);
+        gl.uniform2f(t2Uniform, t2[0], t2[1]);
         gl.uniform1f(signUniform, sign);
 
         // clear screen
