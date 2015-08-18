@@ -75,11 +75,12 @@ $(function () {
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 
     function initTriangle() {
-        // Starting half-kite that fills the screen.
-        var scale = 2;
-        var t0 = vectorScale(scale, [3.5, -1.5]);
-        var t1 = vectorScale(scale, [1.954915021, 3.25528257925]);
-        var t2 = vectorScale(scale, [-6.5, -1.5]);
+        // Starting half-kite that fills the screen (1 x phi x phi).
+        var scale = 10;
+        var height = Math.sqrt(PHI * PHI - 0.5 * 0.5);
+        var t0 = vectorScale(scale, [0, 0]);
+        var t1 = vectorScale(scale, [1, 0]);
+        var t2 = vectorScale(scale, [0.5, height]);
         var centre = vectorScale(1/3, vectorAdd(t0, vectorAdd(t1, t2)));
         t0 = vectorSub(t0, centre);
         t1 = vectorSub(t1, centre);
@@ -174,7 +175,7 @@ $(function () {
         triangle.t1 = vectorScale(scale, triangle.t1);
         triangle.t2 = vectorScale(scale, triangle.t2);
 
-        var angle = delta / 10;
+        var angle = delta / 20;
         triangle.t0 = vectorRot(angle, triangle.t0);
         triangle.t1 = vectorRot(angle, triangle.t1);
         triangle.t2 = vectorRot(angle, triangle.t2);
