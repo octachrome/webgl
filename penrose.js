@@ -120,7 +120,7 @@ $(function () {
         var sign = tri.sign;
         var p0, p1, p2;
 
-        if (tri.triangleType == HALF_DART) {
+        if (tri.type == HALF_DART) {
             p0 = t2; // apex of the triangle, sitting on its wide base
             p1 = vectorAdd(t0, vectorScale(PHI_INV, vectorSub(t1, t0))); // point near the right of the base
 
