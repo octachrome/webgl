@@ -174,6 +174,11 @@ $(function () {
         triangle.t1 = vectorScale(scale, triangle.t1);
         triangle.t2 = vectorScale(scale, triangle.t2);
 
+        var angle = delta / 10;
+        triangle.t0 = vectorRot(angle, triangle.t0);
+        triangle.t1 = vectorRot(angle, triangle.t1);
+        triangle.t2 = vectorRot(angle, triangle.t2);
+
         gl.uniform1i(triangleTypeUniform, triangle.type);
         gl.uniform2f(t0Uniform, triangle.t0[0], triangle.t0[1]);
         gl.uniform2f(t1Uniform, triangle.t1[0], triangle.t1[1]);
@@ -213,5 +218,12 @@ $(function () {
 
     function vectorScaleAbout(factor, centre, v) {
         return vectorAdd(centre, vectorScale(factor, vectorAdd(v, vectorScale(-1, centre))));
+    }
+
+    function vectorRot(angle, v) {
+        return [
+            v[0] * Math.cos(angle) - v[1] * Math.sin(angle),
+            v[0] * Math.sin(angle) + v[1] * Math.cos(angle),
+        ];
     }
 });
