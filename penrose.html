@@ -25,12 +25,11 @@
     uniform vec2 start_t2;
     uniform float start_sign;
     uniform int start_triangleType;
+    uniform vec4 colours[3];
 
     varying vec2 fragmentPosition;
 
-    const vec4 KITE_COLOUR = vec4(0, 153, 51, 255) / 255.;
-    const vec4 DART_COLOUR = vec4(102, 204, 255, 255) / 255.;
-    const vec4 EDGE_COLOUR = vec4(255, 12, 12, 255) / 255.;
+    const vec4 EDGE_COLOUR = vec4(0, 0, 0, 255.) / 255.;
 
     const float PI = 3.1415926535898;
     const float EDGE = 0.002;
@@ -70,12 +69,12 @@ half dart:
         return cross(line1, line2).z;
     }
 
-    vec4 calcColour(int triangleType, vec2 t0, vec2 t1, vec2 t2) {
+    vec4 calcColour(int triangleType, vec4 dartColour, vec4 kiteColour, vec2 t0, vec2 t1, vec2 t2) {
         vec4 colour;
         if (triangleType == HALF_DART) {
-            colour = DART_COLOUR;
+            colour = dartColour / 255.;
         } else {
-            colour = KITE_COLOUR;
+            colour = kiteColour / 255.;
         }
 
         float d0 = abs(cross2d(t1, t2, fragmentPosition)) / length(t1 - t2);
@@ -83,7 +82,7 @@ half dart:
         float distNearestEdge = min(d0, d2);
 
         if (distNearestEdge < EDGE) {
-            return mix(colour, vec4(0., 0., 0., 255.), 1. - distNearestEdge / EDGE);
+            return mix(colour, EDGE_COLOUR, 1. - distNearestEdge / EDGE);
         } else {
             return colour;
         }
@@ -156,10 +155,10 @@ half dart:
         }
 
         if (triangleType == NONE) {
-            gl_FragColor = vec4(0, 0, 0, 255);
+            gl_FragColor = vec4(0, 0, 0, 1.);
         } else {
-            vec4 colour = calcColour(triangleType, t0, t1, t2);
-            vec4 prev_colour = calcColour(prev_triangleType, prev_t0, prev_t1, prev_t2);
+            vec4 colour = calcColour(triangleType, colours[1], colours[2], t0, t1, t2);
+            vec4 prev_colour = calcColour(prev_triangleType, colours[0], colours[1], prev_t0, prev_t1, prev_t2);
 
             float ratio = 1. - fract(time);
             float ease = 3. * ratio * ratio - 2. * ratio * ratio * ratio;

@@ -1,6 +1,18 @@
 $(function () {
     'use strict';
 
+    var pallette = [
+        [0x4D, 0x4D, 0x4D], // gray
+        [0x5D, 0xA5, 0xDA], // blue
+        [0xFA, 0xA4, 0x3A], // orange
+        [0x60, 0xBD, 0x68], // green
+        [0xF1, 0x7C, 0xB0], // pink
+        [0xB2, 0x91, 0x2F], // brown
+        [0xB2, 0x76, 0xB2], // purple
+        [0xDE, 0xCF, 0x3F], // yellow
+        [0xF1, 0x58, 0x54]  // red
+    ];
+
     var RATE = 0.0005;
     var HALF_DART = 1; // sitting on wide base, t0 is bottom-left, t1 is bottom-right, t2 is top
     var HALF_KITE = 2; // sitting on narrow base, t0 is bottom-left, t1 is bottom-right, t2 is top
@@ -49,6 +61,9 @@ $(function () {
     // this unform is used to specify the aspect ratio of the viewport
     var aspectUniform = gl.getUniformLocation(program, 'aspect');
     gl.uniform1f(aspectUniform, aspect);
+
+    // specifies the colours used to fill the tiles
+    var coloursUniform = gl.getUniformLocation(program, 'colours');
 
     var timeUniform = gl.getUniformLocation(program, 'time');
     var t0Uniform = gl.getUniformLocation(program, 'start_t0');
@@ -158,6 +173,26 @@ $(function () {
     var lastTime = new Date().getTime();
     var time = 0;
 
+    var colours = [
+        null, pallette[0], pallette[1]
+    ];
+    var nextColour = 2;
+    function nextColours() {
+        colours.splice(0, 1);
+        colours.push(pallette[nextColour]);
+        nextColour = (nextColour + 1) % pallette.length;
+
+        var c = [];
+        for (var i = 0; i < 3; i++) {
+            for (var j = 0; j < 3; j++) {
+                c.push(colours[i][j]);
+            }
+            c.push(255);
+        }
+        gl.uniform4fv(coloursUniform, c);
+    }
+    nextColours();
+
     function drawFrame() {
         var delta = (new Date().getTime() - lastTime) * RATE;
         lastTime = new Date().getTime();
@@ -166,6 +201,7 @@ $(function () {
         if (time >= 1) {
             time -= 1;
             triangle = nextTriangle(triangle, [0, 0]);
+            nextColours();
         }
 
         gl.uniform1f(timeUniform, time);
