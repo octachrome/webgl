@@ -1,4 +1,6 @@
 $(function () {
+    'use strict';
+
     var RATE = 0.0005;
     var HALF_DART = 1; // sitting on wide base, t0 is bottom-left, t1 is bottom-right, t2 is top
     var HALF_KITE = 2; // sitting on narrow base, t0 is bottom-left, t1 is bottom-right, t2 is top
@@ -41,7 +43,7 @@ $(function () {
     gl.useProgram(program);
 
     // this attribute is used to specify the position of each vertex
-    vertexPositionAttribute = gl.getAttribLocation(program, 'vertexPosition');
+    var vertexPositionAttribute = gl.getAttribLocation(program, 'vertexPosition');
     gl.enableVertexAttribArray(vertexPositionAttribute);
 
     // this unform is used to specify the aspect ratio of the viewport
@@ -72,33 +74,41 @@ $(function () {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 
-    var triangleType;
-    var t0;
-    var t1;
-    var t2;
-    var sign;
-
     function initTriangle() {
         // Starting half-kite that fills the screen.
-        triangleType = HALF_KITE;
-        var scale = .5;
-        t0 = vectorScale(scale, [3.5, -1.5]);
-        t1 = vectorScale(scale, [1.954915021, 3.25528257925]);
-        t2 = vectorScale(scale, [-6.5, -1.5]);
+        var scale = 2;
+        var t0 = vectorScale(scale, [3.5, -1.5]);
+        var t1 = vectorScale(scale, [1.954915021, 3.25528257925]);
+        var t2 = vectorScale(scale, [-6.5, -1.5]);
         var centre = vectorScale(1/3, vectorAdd(t0, vectorAdd(t1, t2)));
         t0 = vectorSub(t0, centre);
         t1 = vectorSub(t1, centre);
         t2 = vectorSub(t2, centre);
-        sign = 1;
+
+        return {
+            type: HALF_KITE,
+            sign: 1,
+            t0: t0,
+            t1: t1,
+            t2: t2
+        };
     }
-    initTriangle();
 
-    function nextTriangle(point) {
-        if (triangleType == HALF_DART) {
-            var p0 = t2; // apex of the triangle, sitting on its wide base
-            var p1 = vectorAdd(t0, vectorScale(PHI_INV, vectorSub(t1, t0))); // point near the right of the base
+    var triangle = initTriangle();
 
-            if (sign * cross2d(p1, p0, point) < 0.) {
+    function nextTriangle(tri, point) {
+        var t0 = tri.t0;
+        var t1 = tri.t1;
+        var t2 = tri.t2;
+        var triangleType;
+        var sign = tri.sign;
+        var p0, p1, p2;
+
+        if (tri.triangleType == HALF_DART) {
+            p0 = t2; // apex of the triangle, sitting on its wide base
+            p1 = vectorAdd(t0, vectorScale(PHI_INV, vectorSub(t1, t0))); // point near the right of the base
+
+            if (tri.sign * cross2d(p1, p0, point) < 0.) {
                 t0 = t1;
                 t1 = t2;
                 t2 = p1;
@@ -112,16 +122,16 @@ $(function () {
                 sign *= -1.; // this one is flipped
             }
         } else {
-            var p0 = vectorAdd(t2, vectorScale(PHI_INV, vectorSub(t0, t2))); // point near the bottom of the left side
-            var p1 = vectorAdd(t1, vectorScale(PHI_INV, vectorSub(t2, t1))); // point near the top of the right side
-            var p2 = t1; // this point divides the two kite halves: bottom-left corner
+            p0 = vectorAdd(t2, vectorScale(PHI_INV, vectorSub(t0, t2))); // point near the bottom of the left side
+            p1 = vectorAdd(t1, vectorScale(PHI_INV, vectorSub(t2, t1))); // point near the top of the right side
+            p2 = t1; // this point divides the two kite halves: bottom-left corner
 
             if (sign * cross2d(p0, p1, point) > 0.) {
                 t0 = t2;
                 t1 = p0;
                 t2 = p1;
                 triangleType = HALF_DART;
-            } else if (sign * cross2d(p0, p2, point)  > 0.) {
+            } else if (sign * cross2d(p0, p2, point) > 0.) {
                 t2 = t1;
                 t0 = p0;
                 t1 = p1;
@@ -134,6 +144,14 @@ $(function () {
                 triangleType = HALF_KITE;
             }
         }
+
+        return {
+            type: triangleType,
+            sign: sign,
+            t0: t0,
+            t1: t1,
+            t2: t2
+        };
     }
 
     var lastTime = new Date().getTime();
@@ -146,28 +164,21 @@ $(function () {
         time += delta;
         if (time >= 1) {
             time -= 1;
-            // Not sure why this point works, but it does.
-            nextTriangle([-10, 10]);
+            triangle = nextTriangle(triangle, [0, 0]);
         }
 
         gl.uniform1f(timeUniform, time);
 
-        var centre = vectorScale(1/3, vectorAdd(t0, vectorAdd(t1, t2)));
-        t0 = vectorAdd(t0, vectorScale(-delta, centre));
-        t1 = vectorAdd(t1, vectorScale(-delta, centre));
-        t2 = vectorAdd(t2, vectorScale(-delta, centre));
-
-        var origin = [0, 0];
         var scale = Math.pow(PHI, delta);
-        t0 = vectorScaleAbout(scale, origin, t0);
-        t1 = vectorScaleAbout(scale, origin, t1);
-        t2 = vectorScaleAbout(scale, origin, t2);
+        triangle.t0 = vectorScale(scale, triangle.t0);
+        triangle.t1 = vectorScale(scale, triangle.t1);
+        triangle.t2 = vectorScale(scale, triangle.t2);
 
-        gl.uniform1i(triangleTypeUniform, triangleType);
-        gl.uniform2f(t0Uniform, t0[0], t0[1]);
-        gl.uniform2f(t1Uniform, t1[0], t1[1]);
-        gl.uniform2f(t2Uniform, t2[0], t2[1]);
-        gl.uniform1f(signUniform, sign);
+        gl.uniform1i(triangleTypeUniform, triangle.type);
+        gl.uniform2f(t0Uniform, triangle.t0[0], triangle.t0[1]);
+        gl.uniform2f(t1Uniform, triangle.t1[0], triangle.t1[1]);
+        gl.uniform2f(t2Uniform, triangle.t2[0], triangle.t2[1]);
+        gl.uniform1f(signUniform, triangle.sign);
 
         // clear screen
         gl.clearColor(0, 0, 0, 1);
@@ -197,7 +208,7 @@ $(function () {
     function cross2d(origin, v1, v2) {
         var line1 = vectorSub(v1, origin);
         var line2 = vectorSub(v2, origin);
-        return v1[0] * v2[1] - v1[1] * v2[0];
+        return line1[0] * line2[1] - line1[1] * line2[0];
     }
 
     function vectorScaleAbout(factor, centre, v) {
