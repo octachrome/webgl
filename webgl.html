@@ -3,30 +3,40 @@
 <head>
     <script type="text/x-shader" id="vertex-shader-src">
     precision mediump float;
+    precision lowp int;
     attribute vec2 vertexPosition;
+    attribute vec2 texCoords;
     attribute vec3 vertexColour;
     varying vec3 fragmentColour;
+    varying vec2 vTexCoords;
     uniform int mode;
 
     void main() {
         gl_Position = vec4(vertexPosition, 0, 1);
-        if (mode == 1) {
-            gl_PointSize = 50.0;
+        if (mode == 0) {
+            vTexCoords = texCoords;
+        }
+        else {
+            gl_PointSize = 500.0;
             fragmentColour = vertexColour;
         }
     }
     </script>
     <script type="text/x-shader" id="fragment-shader-src">
     precision mediump float;
+    precision lowp int;
     varying vec3 fragmentColour;
+    varying vec2 vTexCoords;
     uniform int mode;
+    uniform sampler2D texture;
 
     void main() {
         if (mode == 0) {
-            gl_FragColor = vec4(1., 0., 0., 1.);
+            gl_FragColor = texture2D(texture, vTexCoords);
         }
         else {
             float scale = max(0.0, 1.0 - 2.0 * length(vec2(gl_PointCoord[0] - 0.5, gl_PointCoord[1] - 0.5)));
+            scale = step(.001, scale);
             gl_FragColor = vec4(fragmentColour * scale, scale);
         }
     }
@@ -35,6 +45,6 @@
     <script src="webgl.js"></script>
 </head>
 <body>
-    <canvas width="800" height="600"></canvas>
+    <canvas width="1024" height="1024"></canvas>
 </body>
 </html>
