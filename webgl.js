@@ -1,7 +1,12 @@
+var gl;
+var vertexPositionsBuffer;
+var vertexColoursBuffer;
+var modeUniform;
+var bgTexture;
+
 $(function () {
     var canvas = $('canvas')[0];
 
-    var gl;
     try {
         gl = canvas.getContext('experimental-webgl');
         gl.viewportWidth = canvas.width;
@@ -43,6 +48,43 @@ $(function () {
     vertexColourAttribute = gl.getAttribLocation(program, 'vertexColour');
     gl.enableVertexAttribArray(vertexColourAttribute);
 
+    modeUniform = gl.getUniformLocation(program, 'mode');
+
+    vertexPositionsBuffer = gl.createBuffer();
+    vertexColoursBuffer = gl.createBuffer();
+
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    bgTexture = initTextures();
+});
+
+function render() {
+    renderBg();
+}
+
+function renderBg() {
+    var vertexPositions = [
+        [-1, -1],
+        [-1,  1],
+        [ 1,  1],
+        [ 1, -1]
+    ];
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionsBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
+
+    gl.uniform1i(modeUniform, 0);
+
+    gl.clearColor(1, 1, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.drawArrays(gl.QUADS, 0, i);
+}
+
+function renderPoints() {
     var vertexPositions = [];
     var vertexColours = [];
 
@@ -54,22 +96,37 @@ $(function () {
         vertexColours.push(Math.random()); // blue
     }
 
-    var vertexPositionsBuffer = gl.createBuffer();
+    gl.uniform1i(modeUniform, 1);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionsBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 
-    var vertexColoursBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexColoursBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColours), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexColourAttribute, 3, gl.FLOAT, false, 0, 0);
-
-    gl.enable(gl.BLEND);
-    gl.blendEquation(gl.FUNC_ADD);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.clearColor(1, 1, 1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.drawArrays(gl.POINTS, 0, i);
-});
+}
+
+function initTextures() {
+    var texture = gl.createTexture();
+    var image = new Image();
+    image.onload = function() {
+        handleTextureLoaded(image, texture);
+        render();
+    }
+    image.src = 'street.jpg';
+    return texture;
+}
+
+function handleTextureLoaded(image, texture) {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+}
