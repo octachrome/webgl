@@ -14,7 +14,6 @@
     </head>
     <body>
         <script type="text/x-shader" id="vertex-shader-src">
-        uniform float pointSize;
         varying vec2 coords;
 
         void main() {
@@ -24,8 +23,50 @@
         </script>
         <!-- Useful function reference: http://patriciogonzalezvivo.com/2015/thebookofshaders/05/kynd.png -->
         <script type="text/x-shader" id="fragment-shader-src">
+        uniform float time;
         uniform float hue;
+        uniform sampler2D noiseTexture;
         varying vec2 coords;
+
+        float noise2d(vec2 pos, float scale) {
+            // pos is from fragmentPosition, which ranges from -1 to 1
+            // move it to texture pixel space (0 to 1023, but it can wrap)
+            vec2 scaled = scale * pos;
+            vec2 topLeft = floor(scaled);
+            vec2 topRight = topLeft + vec2(1.0, 0.0);
+            vec2 bottomLeft = topLeft + vec2(0.0, 1.0);
+            vec2 bottomRight = topLeft + vec2(1.0, 1.0);
+
+            float res = 20.;
+            vec2 normTL = texture2D(noiseTexture, (2.0 * topLeft + vec2(1.0, 1.0)) / res).xy * 2.0 - 1.0;
+            vec2 normTR = texture2D(noiseTexture, (2.0 * topRight + vec2(1.0, 1.0)) / res).xy * 2.0 - 1.0;
+            vec2 normBL = texture2D(noiseTexture, (2.0 * bottomLeft + vec2(1.0, 1.0)) / res).xy * 2.0 - 1.0;
+            vec2 normBR = texture2D(noiseTexture, (2.0 * bottomRight + vec2(1.0, 1.0)) / res).xy * 2.0 - 1.0;
+
+            vec2 offset = scaled - topLeft;
+            float yScale = 3.0 * offset.y * offset.y - 2.0 * offset.y * offset.y * offset.y;
+            float left = mix(dot(normTL, scaled - topLeft), dot(normBL, scaled - bottomLeft), yScale);
+            float right = mix(dot(normTR, scaled - topRight), dot(normBR, scaled - bottomRight), yScale);
+
+            float xScale = 3.0 * offset.x * offset.x - 2.0 * offset.x * offset.x * offset.x;
+            return mix(left, right, xScale);
+        }
+
+        // iters should be [1,5] or so
+        // persist should be [0,1]
+        float octaveNoise2d(vec2 pos, float scale, int iters, float persist) {
+            float result = 0.0;
+            float factor = 1.0;
+            for (int i = 0; i < 64; i++) {
+                if (i >= iters) {
+                    break;
+                }
+                result += factor * noise2d(pos, scale);
+                scale *= 2.0;
+                factor *= persist;
+            }
+            return result;
+        }
 
         float tanh(float x) {
             float e = exp(2. * x);
@@ -55,7 +96,10 @@
 
         void main() {
             vec2 pos = 2. * (coords - .5);
-            float scale = 4. - spikey(cos(3.*atan(pos.x, pos.y)), 8., 2.) * 3.;
+            vec2 pos2 = pos / length(pos) + time / 2. + 100.;
+            // float x = cos(3.*atan(pos.x, pos.y));
+            float x = octaveNoise2d(pos2, .5, 3, .9);
+            float scale = 4. - spikey(x, 8., 2.) * 3.;
             vec2 newpos = pos * scale;
             gl_FragColor = getColour(newpos);
         }
@@ -72,12 +116,18 @@
         renderer.setSize(width, height);
         document.body.appendChild(renderer.domElement);
 
+        var noiseTexture = createNoiseTexture();
+        noiseTexture.needsUpdate = true;
+
         var uniforms = {
-            pointSize: {
-                value: 300
+            time: {
+                value: 0
             },
             hue: {
                 value: 0.55
+            },
+            noiseTexture: {
+                value: noiseTexture
             }
         };
 
@@ -96,16 +146,25 @@
         camera.position.z = 5;
 
         var gui = new DAT.GUI();
-        gui.add(uniforms.pointSize, 'value').name('Size').min(0).max(300);
         gui.add(uniforms.hue, 'value').name('Hue').min(0).max(1);
 
         var clock = new THREE.Clock();
 
         function render() {
             requestAnimationFrame(render);
+            uniforms.time.value = clock.getElapsedTime();
             renderer.render(scene, camera);
         }
         render();
+
+        function createNoiseTexture() {
+            var noiseArray = [];
+            for (var i = 0; i < 1024 * 1024; i++) {
+                var angle = 2 * Math.PI * Math.random();
+                noiseArray.push(127 + Math.sin(angle) * 127, 127 + Math.cos(angle) * 127, 0, 255);
+            }
+            return new THREE.DataTexture(new Uint8Array(noiseArray), 1024, 1024, THREE.RGBAFormat);
+        }
         </script>
     </body>
 </html>
