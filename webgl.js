@@ -85,7 +85,8 @@ $(function () {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     filterTexture = createFilterTexture();
-    bgTexture = initTextures();
+    bgTexture = loadTexture('street.jpg');
+    flareTexture = loadTexture('flare2.png');
 });
 
 // A Gaussian filter stored in a texture.
@@ -123,8 +124,8 @@ function createFilterTexture() {
 }
 
 function render() {
-    renderTexture();
     renderBg();
+    renderTexture();
     // renderPoints();
 }
 
@@ -133,7 +134,7 @@ function renderTexture() {
     var vertexColours = [1, 1, 1];
     var texCoords = [0, 0];
 
-    gl.bindTexture(gl.TEXTURE_2D, bgTexture);
+    gl.bindTexture(gl.TEXTURE_2D, flareTexture);
     gl.uniform1i(textureUniform, 0); // we are implicitly bound to texture unit 0
     gl.uniform1i(modeUniform, 1);
 
@@ -149,14 +150,14 @@ function renderTexture() {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
     gl.vertexAttribPointer(texCoordsAttribute, 2, gl.FLOAT, false, 0, 0);
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+    // gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
 
-    gl.clearColor(0, 0, 1, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    // gl.clearColor(0, 0, 1, 0);
+    // gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.drawArrays(gl.POINTS, 0, 1);
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
 function renderBg() {
@@ -191,7 +192,7 @@ function renderBg() {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
     gl.vertexAttribPointer(texCoordsAttribute, 2, gl.FLOAT, false, 0, 0);
 
-    gl.bindTexture(gl.TEXTURE_2D, filterTexture);
+    gl.bindTexture(gl.TEXTURE_2D, bgTexture);
     gl.uniform1i(textureUniform, 0); // we are implicitly bound to texture unit 0
     gl.uniform1i(modeUniform, 0);
 
@@ -206,7 +207,7 @@ function renderPoints() {
     var vertexColours = [];
     var texCoords = [];
 
-    for (var i = 0; i < 100; i++) {
+/*    for (var i = 0; i < 100; i++) {
         vertexPositions.push(Math.random() * 2 - 1); // x
         vertexPositions.push(Math.random() * 2 - 1); // y
         vertexColours.push(Math.random()); // red
@@ -215,6 +216,15 @@ function renderPoints() {
         texCoords.push(0);
         texCoords.push(0);
     }
+*/
+
+    vertexPositions.push(Math.random() * 2 - 1); // x
+    vertexPositions.push(Math.random() * 2 - 1); // y
+    vertexColours.push(Math.random()); // red
+    vertexColours.push(Math.random()); // green
+    vertexColours.push(Math.random()); // blue
+    texCoords.push(0);
+    texCoords.push(0);
 
     gl.bindTexture(gl.TEXTURE_2D, bgTexture);
     gl.uniform1i(textureUniform, 0); // we are implicitly bound to texture unit 0
@@ -232,17 +242,23 @@ function renderPoints() {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
     gl.vertexAttribPointer(texCoordsAttribute, 2, gl.FLOAT, false, 0, 0);
 
-    gl.drawArrays(gl.POINTS, 0, i);
+    gl.drawArrays(gl.POINTS, 0, 1);
 }
 
-function initTextures() {
+var textureCount = 0;
+
+function loadTexture(src, cb) {
+    textureCount++;
     var texture = gl.createTexture();
     var image = new Image();
     image.onload = function() {
         handleTextureLoaded(image, texture);
-        render();
+        textureCount--;
+        if (textureCount == 0) {
+            render();
+        }
     }
-    image.src = 'street.jpg';
+    image.src = src;
     return texture;
 }
 

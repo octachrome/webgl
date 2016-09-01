@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset=utf-8>
+        <style>
+            body {
+                margin: 0;
+            }
+            canvas {
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <script type="text/x-shader" id="vertex-shader-src">
+        uniform float pointSize;
+        varying vec2 coords;
+
+        void main() {
+            coords = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+        </script>
+        <!-- Useful function reference: http://patriciogonzalezvivo.com/2015/thebookofshaders/05/kynd.png -->
+        <script type="text/x-shader" id="fragment-shader-src">
+        uniform float hue;
+        varying vec2 coords;
+
+        vec3 hsv2rgb(vec3 c) {
+            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+            vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+            return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+        }
+
+        vec4 getColour(vec2 pos) {
+            float h = hue;
+            float s = smoothstep(.5, .6, length(pos));
+            float v = 1.;
+            float a = smoothstep(1., .6, length(pos));
+            return vec4(hsv2rgb(vec3(h, s, v)), a);
+        }
+
+        void main() {
+            vec2 pos = 5. * (coords - .5);
+            float scale = 1. + pow(cos(4.*atan(pos.x, pos.y)), .5);
+            vec2 newpos = pos * scale;
+            gl_FragColor = getColour(newpos);
+        }
+        </script>
+        <script src="three.js"></script>
+        <script type="text/javascript" src="DAT.GUI.min.js"></script>
+        <script>
+        var width = 1200; // window.innerWidth
+        var height = 800; // window.innerHeight
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize(width, height);
+        document.body.appendChild(renderer.domElement);
+
+        var uniforms = {
+            pointSize: {
+                value: 300
+            },
+            hue: {
+                value: 0.55
+            }
+        };
+
+        var material = new THREE.ShaderMaterial({
+            vertexShader: document.getElementById('vertex-shader-src').textContent,
+            fragmentShader: document.getElementById('fragment-shader-src').textContent,
+            uniforms: uniforms,
+            transparent: true
+        });
+
+        var geometry = new THREE.PlaneBufferGeometry(10, 10);
+        var obj = new THREE.Mesh(geometry, material);
+        // obj.position.z = 0;
+        scene.add(obj);
+
+        camera.position.z = 5;
+
+        var gui = new DAT.GUI();
+        gui.add(uniforms.pointSize, 'value').name('Size').min(0).max(300);
+        gui.add(uniforms.hue, 'value').name('Hue').min(0).max(1);
+
+        var clock = new THREE.Clock();
+
+        function render() {
+            requestAnimationFrame(render);
+            renderer.render(scene, camera);
+        }
+        render();
+        </script>
+    </body>
+</html>

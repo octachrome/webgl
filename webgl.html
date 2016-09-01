@@ -35,9 +35,10 @@
             gl_FragColor = texture2D(texture, vTexCoords);
         }
         else {
-            float scale = max(0.0, 1.0 - 2.0 * length(vec2(gl_PointCoord[0] - 0.5, gl_PointCoord[1] - 0.5)));
-            scale = step(.001, scale);
-            gl_FragColor = vec4(fragmentColour * scale, scale);
+            gl_FragColor = texture2D(texture, gl_PointCoord);
+            //float scale = max(0.0, 1.0 - 2.0 * length(vec2(gl_PointCoord[0] - 0.5, gl_PointCoord[1] - 0.5)));
+            //scale = step(.001, scale);
+            //gl_FragColor = vec4(fragmentColour * scale, scale);
         }
     }
     </script>
