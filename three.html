@@ -26,9 +26,10 @@
         uniform float time;
         uniform float hue1;
         uniform float hue2;
-        uniform float sat1;
-        uniform float sat2;
-        uniform float alphaCutoff;
+        uniform float satMin;
+        uniform float satMax;
+        uniform float alphaMin;
+        uniform float alphaMax;
         uniform sampler2D noiseTexture;
         varying vec2 coords;
 
@@ -92,9 +93,9 @@
 
         vec4 getColour(vec2 pos) {
             float h = mix(hue1, hue2, smoothstep(0., 1., length(pos)));
-            float s = smoothstep(sat1, sat2, length(pos));
+            float s = smoothstep(satMin, satMax, length(pos));
             float v = 1.;
-            float a = smoothstep(1., alphaCutoff, length(pos));
+            float a = smoothstep(max(alphaMin, alphaMax), min(alphaMin, alphaMax), length(pos));
             return vec4(hsv2rgb(vec3(h, s, v)), a);
         }
 
@@ -124,14 +125,17 @@
             hue2: {
                 value: 0.09
             },
-            sat1: {
+            satMin: {
                 value: 0.1
             },
-            sat2: {
+            satMax: {
                 value: 0.57
             },
-            alphaCutoff: {
-                value: 0.3
+            alphaMin: {
+                value: 0.2
+            },
+            alphaMax: {
+                value: 1
             },
             noiseTexture: {
                 value: noiseTexture
@@ -141,9 +145,10 @@
         var gui = new DAT.GUI();
         gui.add(uniforms.hue1, 'value').name('Hue 1').min(0).max(1);
         gui.add(uniforms.hue2, 'value').name('Hue 2').min(0).max(1);
-        gui.add(uniforms.sat1, 'value').name('Saturation min').min(0).max(1);
-        gui.add(uniforms.sat2, 'value').name('Saturation max').min(0).max(1);
-        gui.add(uniforms.alphaCutoff, 'value').name('Alpha cutoff').min(0).max(.99);
+        gui.add(uniforms.satMin, 'value').name('Saturation min').min(0).max(1);
+        gui.add(uniforms.satMax, 'value').name('Saturation max').min(0).max(1);
+        gui.add(uniforms.alphaMin, 'value').name('Alpha min').min(0).max(.99);
+        gui.add(uniforms.alphaMax, 'value').name('Alpha max').min(0).max(.99);
 
         var textureLoader = new THREE.TextureLoader();
         var bgTexture = textureLoader.load('street.jpg');
@@ -182,9 +187,16 @@
                 transparent: true
             });
 
-            var obj = new THREE.Mesh(new THREE.PlaneBufferGeometry(1, 1), shaderMaterial);
-            obj.position.z = -2;
-            scene.add(obj);
+            var objects = [];
+            for (var i = 0; i < 10; i++) {
+                var obj = new THREE.Mesh(new THREE.PlaneBufferGeometry(1, 1), shaderMaterial);
+                obj.radius = 1 + Math.random() * 2;
+                obj.thetaOffset = Math.random() * 6;
+                obj.speed = (Math.random() + 1) * (Math.random() > 0.5 ? -1 : 1);
+                obj.position.y = Math.random() * 2 - 1;
+                scene.add(obj);
+                objects.push(obj);
+            }
 
             camera.position.z = 0;
 
@@ -192,7 +204,12 @@
 
             function render() {
                 requestAnimationFrame(render);
-                uniforms.time.value = clock.getElapsedTime();
+                var theta = uniforms.time.value = clock.getElapsedTime();
+                for (var i = 0; i < objects.length; i++) {
+                    var obj = objects[i];
+                    obj.position.x = obj.radius * Math.cos(theta * obj.speed + obj.thetaOffset);
+                    obj.position.z = -5 - obj.radius * Math.sin(theta * obj.speed + obj.thetaOffset);
+                }
                 renderer.clear();
                 renderer.render(sceneBg, cameraBg);
                 renderer.render(scene, camera);
