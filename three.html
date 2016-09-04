@@ -14,10 +14,13 @@
     </head>
     <body>
         <script type="text/x-shader" id="vertex-shader-src">
+        attribute float offset;
         varying vec2 coords;
+        varying float vOffset;
 
         void main() {
             coords = uv;
+            vOffset = offset;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
         </script>
@@ -30,6 +33,7 @@
         uniform float scale;
         uniform sampler2D noiseTexture;
         varying vec2 coords;
+        varying float vOffset;
 
         float noise2d(vec2 pos, float scale) {
             // pos is from fragmentPosition, which ranges from -1 to 1
@@ -92,7 +96,7 @@
         void main() {
             vec2 pos = 2. * (coords - .5);
             // float alpha = (.5 + cos(length(pos) * 10. - time) / 2.) * smoothstep(1., .5, length(pos));
-            float alpha = max(0., min(1., tan(length(pos) * density - time * speed) / (density * scale))) * smoothstep(1., fadeDistance, length(pos));
+            float alpha = max(0., min(1., tan(length(pos) * density - time * speed + vOffset) / (density * scale))) * smoothstep(1., fadeDistance, length(pos));
             gl_FragColor = vec4(1, 1, 1, alpha);
         }
         </script>
@@ -168,7 +172,12 @@
 
             var objects = [];
             for (var i = 0; i < 5; i++) {
-                var obj = new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2), shaderMaterial);
+                geom = new THREE.PlaneBufferGeometry(2, 2);
+                var offset = Math.random() * 10;
+                var offsets = new Float32Array([offset, offset, offset, offset]);
+                geom.addAttribute('offset', new THREE.BufferAttribute(offsets, 1));
+
+                var obj = new THREE.Mesh(geom, shaderMaterial);
                 obj.radius = 1 + Math.random() * 2;
                 obj.thetaOffset = Math.random() * 6;
                 obj.speed = (Math.random() + 1) * (Math.random() > 0.5 ? -0.5 : 0.5);
