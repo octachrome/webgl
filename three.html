@@ -101,12 +101,9 @@
 
         void main() {
             vec2 pos = 2. * (coords - .5);
-            // vec2 pos2 = pos / length(pos) + time / 2. + 100.;
-            // float x = cos(3.*atan(pos.x, pos.y));
-            // float x = octaveNoise2d(pos2, .5, 3, .9);
-            // float scale = 4. - spikey(x, 8., 2.) * 3.;
-            // vec2 newpos = pos * scale;
-            gl_FragColor = getColour(pos);
+            // float density = (.5 + cos(length(pos) * 10. - time) / 2.) * smoothstep(1., .5, length(pos));
+            float density = max(0., min(1., tan(length(pos) * 2. - time) / 10.)) * smoothstep(1., .5, length(pos));
+            gl_FragColor = vec4(1, 1, 1, density);
         }
         </script>
         <script src="three.js"></script>
@@ -188,11 +185,11 @@
             });
 
             var objects = [];
-            for (var i = 0; i < 10; i++) {
-                var obj = new THREE.Mesh(new THREE.PlaneBufferGeometry(1, 1), shaderMaterial);
+            for (var i = 0; i < 5; i++) {
+                var obj = new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2), shaderMaterial);
                 obj.radius = 1 + Math.random() * 2;
                 obj.thetaOffset = Math.random() * 6;
-                obj.speed = (Math.random() + 1) * (Math.random() > 0.5 ? -1 : 1);
+                obj.speed = (Math.random() + 1) * (Math.random() > 0.5 ? -0.5 : 0.5);
                 obj.position.y = Math.random() * 2 - 1;
                 scene.add(obj);
                 objects.push(obj);
