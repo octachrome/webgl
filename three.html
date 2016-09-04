@@ -24,12 +24,10 @@
         <!-- Useful function reference: http://patriciogonzalezvivo.com/2015/thebookofshaders/05/kynd.png -->
         <script type="text/x-shader" id="fragment-shader-src">
         uniform float time;
-        uniform float hue1;
-        uniform float hue2;
-        uniform float satMin;
-        uniform float satMax;
-        uniform float alphaMin;
-        uniform float alphaMax;
+        uniform float fadeDistance;
+        uniform float speed;
+        uniform float density;
+        uniform float scale;
         uniform sampler2D noiseTexture;
         varying vec2 coords;
 
@@ -91,19 +89,11 @@
             return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
         }
 
-        vec4 getColour(vec2 pos) {
-            float h = mix(hue1, hue2, smoothstep(0., 1., length(pos)));
-            float s = smoothstep(satMin, satMax, length(pos));
-            float v = 1.;
-            float a = smoothstep(max(alphaMin, alphaMax), min(alphaMin, alphaMax), length(pos));
-            return vec4(hsv2rgb(vec3(h, s, v)), a);
-        }
-
         void main() {
             vec2 pos = 2. * (coords - .5);
-            // float density = (.5 + cos(length(pos) * 10. - time) / 2.) * smoothstep(1., .5, length(pos));
-            float density = max(0., min(1., tan(length(pos) * 2. - time) / 10.)) * smoothstep(1., .5, length(pos));
-            gl_FragColor = vec4(1, 1, 1, density);
+            // float alpha = (.5 + cos(length(pos) * 10. - time) / 2.) * smoothstep(1., .5, length(pos));
+            float alpha = max(0., min(1., tan(length(pos) * density - time * speed) / (density * scale))) * smoothstep(1., fadeDistance, length(pos));
+            gl_FragColor = vec4(1, 1, 1, alpha);
         }
         </script>
         <script src="three.js"></script>
@@ -116,22 +106,16 @@
             time: {
                 value: 0
             },
-            hue1: {
-                value: 0.19
+            fadeDistance: {
+                value: 0
             },
-            hue2: {
-                value: 0.09
+            speed: {
+                value: 2
             },
-            satMin: {
-                value: 0.1
+            density: {
+                value: 5
             },
-            satMax: {
-                value: 0.57
-            },
-            alphaMin: {
-                value: 0.2
-            },
-            alphaMax: {
+            scale: {
                 value: 1
             },
             noiseTexture: {
@@ -140,12 +124,10 @@
         };
 
         var gui = new DAT.GUI();
-        gui.add(uniforms.hue1, 'value').name('Hue 1').min(0).max(1);
-        gui.add(uniforms.hue2, 'value').name('Hue 2').min(0).max(1);
-        gui.add(uniforms.satMin, 'value').name('Saturation min').min(0).max(1);
-        gui.add(uniforms.satMax, 'value').name('Saturation max').min(0).max(1);
-        gui.add(uniforms.alphaMin, 'value').name('Alpha min').min(0).max(.99);
-        gui.add(uniforms.alphaMax, 'value').name('Alpha max').min(0).max(.99);
+        gui.add(uniforms.fadeDistance, 'value').name('Fade dist').min(0).max(.99);
+        gui.add(uniforms.speed, 'value').name('Speed').min(0.5).max(10);
+        gui.add(uniforms.density, 'value').name('Density').min(1).max(50);
+        gui.add(uniforms.scale, 'value').name('Scale').min(.01).max(5);
 
         var textureLoader = new THREE.TextureLoader();
         var bgTexture = textureLoader.load('street.jpg');
