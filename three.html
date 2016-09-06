@@ -27,10 +27,8 @@
         <!-- Useful function reference: http://patriciogonzalezvivo.com/2015/thebookofshaders/05/kynd.png -->
         <script type="text/x-shader" id="fragment-shader-src">
         uniform float time;
-        uniform float fadeDistance;
-        uniform float speed;
-        uniform float density;
-        uniform float scale;
+        uniform float maxTime;
+        uniform float spreadSpeed;
         uniform sampler2D noiseTexture;
         varying vec2 coords;
         varying float vOffset;
@@ -75,28 +73,11 @@
             return result;
         }
 
-        float tanh(float x) {
-            float e = exp(2. * x);
-            return (e - 1.) / (e + 1.);
-        }
-
-        float spikey(float x, float narrowness, float curviness) {
-            // tanh is used as a blending function: ratio smoothly goes from zero to one and back to zero
-            float ratio = (tanh((narrowness * x + 1.) * curviness) - tanh((narrowness * x - 1.) * curviness)) / 2.;
-            // mix between zero and sqrt, which has a nice sharp peak at x=zero
-            return mix(0., 1. - sqrt(abs(x)), ratio);
-        }
-
-        vec3 hsv2rgb(vec3 c) {
-            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-            vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-            return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-        }
-
         void main() {
             vec2 pos = 2. * (coords - .5);
-            // float alpha = (.5 + cos(length(pos) * 10. - time) / 2.) * smoothstep(1., .5, length(pos));
-            float alpha = max(0., min(1., tan(length(pos) * density - time * speed + vOffset) / (density * scale))) * smoothstep(1., fadeDistance, length(pos));
+            float t = time - vOffset;
+            float len = length(pos)*(100. - 100. * pow(t / (11. - spreadSpeed), .01));
+            float alpha = len < 0. ? 0. : (len < 1. ? (pow(len, 10.)) * (1. - length(pos)) : 0.);
             gl_FragColor = vec4(1, 1, 1, alpha);
         }
         </script>
@@ -110,17 +91,11 @@
             time: {
                 value: 0
             },
-            fadeDistance: {
-                value: 0
-            },
-            speed: {
+            maxTime: {
                 value: 2
             },
-            density: {
-                value: 5
-            },
-            scale: {
-                value: 1
+            spreadSpeed: {
+                value: 3
             },
             noiseTexture: {
                 value: noiseTexture
@@ -128,18 +103,16 @@
         };
 
         var gui = new DAT.GUI();
-        gui.add(uniforms.fadeDistance, 'value').name('Fade dist').min(0).max(.99);
-        gui.add(uniforms.speed, 'value').name('Speed').min(0.5).max(10);
-        gui.add(uniforms.density, 'value').name('Density').min(1).max(50);
-        gui.add(uniforms.scale, 'value').name('Scale').min(.01).max(5);
+        gui.add(uniforms.maxTime, 'value').name('Delay').min(1).max(10);
+        gui.add(uniforms.spreadSpeed, 'value').name('Spread speed').min(1).max(10);
 
         var textureLoader = new THREE.TextureLoader();
         var bgTexture = textureLoader.load('street.jpg');
         onTexturesLoaded();
 
         function onTexturesLoaded() {
-            var windowWidth = 1200; // window.innerWidth
-            var windowHeight = 800; // window.innerHeight
+            var windowWidth = 900; // window.innerWidth
+            var windowHeight = 900; // window.innerHeight
             var renderer = new THREE.WebGLRenderer();
             renderer.autoClear = false;
             renderer.setSize(windowWidth, windowHeight);
@@ -171,17 +144,19 @@
             });
 
             var objects = [];
-            for (var i = 0; i < 5; i++) {
+            for (var i = 0; i < 10; i++) {
                 geom = new THREE.PlaneBufferGeometry(2, 2);
-                var offset = Math.random() * 10;
+                var offset = Math.random() * uniforms.maxTime.value;
                 var offsets = new Float32Array([offset, offset, offset, offset]);
                 geom.addAttribute('offset', new THREE.BufferAttribute(offsets, 1));
 
                 var obj = new THREE.Mesh(geom, shaderMaterial);
-                obj.radius = 1 + Math.random() * 2;
-                obj.thetaOffset = Math.random() * 6;
-                obj.speed = (Math.random() + 1) * (Math.random() > 0.5 ? -0.5 : 0.5);
-                obj.position.y = Math.random() * 2 - 1;
+                obj.offset = offset;
+                var theta = Math.random() * 6;
+                var radius = 1 + Math.random() * 2;
+                obj.position.x = radius * Math.cos(theta);
+                obj.position.z = -5 - radius * Math.sin(theta);
+                obj.position.y = Math.random() * 2 - 2;
                 scene.add(obj);
                 objects.push(obj);
             }
@@ -192,11 +167,28 @@
 
             function render() {
                 requestAnimationFrame(render);
-                var theta = uniforms.time.value = clock.getElapsedTime();
+                var time = uniforms.time.value = clock.getElapsedTime() + 10;
                 for (var i = 0; i < objects.length; i++) {
                     var obj = objects[i];
-                    obj.position.x = obj.radius * Math.cos(theta * obj.speed + obj.thetaOffset);
-                    obj.position.z = -5 - obj.radius * Math.sin(theta * obj.speed + obj.thetaOffset);
+                    var relativeTime = time - obj.offset;
+                    if (relativeTime > uniforms.maxTime.value) {
+                        obj.offset = time + Math.random() * uniforms.maxTime.value;
+                        // Using setXYZW to set a 4-valued array is a cheap t.
+                        obj.geometry.getAttribute('offset').setXYZW(0, obj.offset, obj.offset, obj.offset, obj.offset);
+                        obj.geometry.getAttribute('offset').needsUpdate = true;
+                        var theta = Math.random() * 6;
+                        var radius = 1 + Math.random() * 2;
+                        obj.position.x = radius * Math.cos(theta);
+                        obj.position.z = -5 - radius * Math.sin(theta);
+                        obj.position.y = Math.random() * 2 - 2;
+                        relativeTime = time - obj.offset;
+                    }
+                    if (relativeTime < 0) {
+                        obj.visible = false;
+                    }
+                    else {
+                        obj.visible = true;
+                    }
                 }
                 renderer.clear();
                 renderer.render(sceneBg, cameraBg);
