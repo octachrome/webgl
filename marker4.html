@@ -161,9 +161,9 @@
 
         vec3 spherToCart(vec2 longlat) {
           float R = 1.;
-          float x = R * sin(longlat.y) * cos(longlat.x);
-          float y = R * sin(longlat.y) * sin(longlat.x);
-          float z = R * cos(longlat.y);
+          float x = R * cos(longlat.y) * cos(longlat.x);
+          float y = R * cos(longlat.y) * sin(longlat.x);
+          float z = R * sin(longlat.y);
           return vec3(x, y, z);
         }
 
@@ -173,7 +173,7 @@
           float len = length(coords);
           float c = asin(len / R);
           float lng = lng0 + atan(coords.x * sin(c), len * cos(c) * cos(lat0) - coords.y * sin(c) * sin(lat0));
-          float lat = asin(cos(c) * sin(lat0) + coords.y * sin(c) * cos(lat0) / len);
+          float lat = asin(cos(c) * sin(lat0) + (coords.y == 0. ? 0. : (coords.y * sin(c) * cos(lat0) / len)));
           return vec2(lng, lat);
         }
 
@@ -310,6 +310,29 @@
                 renderer.render(scene, camera);
             }
             render();
+        }
+
+        function invOrtho(x, y, lng0, lat0) {
+          var R = 1.;
+          var len = Math.sqrt(x*x + y*y);
+          var c = Math.asin(len / R);
+          var lng = lng0 + Math.atan2(x * Math.sin(c), len * Math.cos(c) * Math.cos(lat0) - y * Math.sin(c) * Math.sin(lat0));
+          var lat = Math.asin(Math.cos(c) * Math.sin(lat0) +  y == 0 ? 0 : (y * Math.sin(c) * Math.cos(lat0) / len));
+          return [lng, lat];
+        }
+
+        function spherToCart(long, lat) {
+          var R = 1.;
+          var x = R * Math.cos(lat) * Math.cos(long);
+          var y = R * Math.cos(lat) * Math.sin(long);
+          var z = R * Math.sin(lat);
+          return [x, y, z];
+        }
+
+        function trans(x, y) {
+          var longlat = invOrtho(x, y, 0, 0);
+          console.log(longlat[0] * 180 / Math.PI, longlat[1] * 180 / Math.PI);
+          return spherToCart(longlat[0], longlat[1]);
         }
         </script>
     </body>
