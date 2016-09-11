@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset=utf-8>
+        <style>
+            body {
+                margin: 0;
+            }
+            canvas {
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <script type="text/x-shader" id="vertex-shader-src">
+        varying vec2 coords;
+
+        void main() {
+            coords = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+        </script>
+        <!-- Useful function reference: http://patriciogonzalezvivo.com/2015/thebookofshaders/05/kynd.png -->
+        <script type="text/x-shader" id="fragment-shader-src">
+        uniform float time;
+        uniform float hue1;
+        uniform float hue2;
+        uniform float satMin;
+        uniform float satMax;
+        uniform float alphaMin;
+        uniform float alphaMax;
+        uniform sampler2D noiseTexture;
+        varying vec2 coords;
+
+        float noise2d(vec2 pos, float scale) {
+            // pos is from fragmentPosition, which ranges from -1 to 1
+            // move it to texture pixel space (0 to 1023, but it can wrap)
+            vec2 scaled = scale * pos;
+            vec2 topLeft = floor(scaled);
+            vec2 topRight = topLeft + vec2(1.0, 0.0);
+            vec2 bottomLeft = topLeft + vec2(0.0, 1.0);
+            vec2 bottomRight = topLeft + vec2(1.0, 1.0);
+
+            float res = 20.;
+            vec2 normTL = texture2D(noiseTexture, (2.0 * topLeft + vec2(1.0, 1.0)) / res).xy * 2.0 - 1.0;
+            vec2 normTR = texture2D(noiseTexture, (2.0 * topRight + vec2(1.0, 1.0)) / res).xy * 2.0 - 1.0;
+            vec2 normBL = texture2D(noiseTexture, (2.0 * bottomLeft + vec2(1.0, 1.0)) / res).xy * 2.0 - 1.0;
+            vec2 normBR = texture2D(noiseTexture, (2.0 * bottomRight + vec2(1.0, 1.0)) / res).xy * 2.0 - 1.0;
+
+            vec2 offset = scaled - topLeft;
+            float yScale = 3.0 * offset.y * offset.y - 2.0 * offset.y * offset.y * offset.y;
+            float left = mix(dot(normTL, scaled - topLeft), dot(normBL, scaled - bottomLeft), yScale);
+            float right = mix(dot(normTR, scaled - topRight), dot(normBR, scaled - bottomRight), yScale);
+
+            float xScale = 3.0 * offset.x * offset.x - 2.0 * offset.x * offset.x * offset.x;
+            return mix(left, right, xScale);
+        }
+
+        // iters should be [1,5] or so
+        // persist should be [0,1]
+        float octaveNoise2d(vec2 pos, float scale, int iters, float persist) {
+            float result = 0.0;
+            float factor = 1.0;
+            for (int i = 0; i < 64; i++) {
+                if (i >= iters) {
+                    break;
+                }
+                result += factor * noise2d(pos, scale);
+                scale *= 2.0;
+                factor *= persist;
+            }
+            return result;
+        }
+
+        float tanh(float x) {
+            float e = exp(2. * x);
+            return (e - 1.) / (e + 1.);
+        }
+
+        float spikey(float x, float narrowness, float curviness) {
+            // tanh is used as a blending function: ratio smoothly goes from zero to one and back to zero
+            float ratio = (tanh((narrowness * x + 1.) * curviness) - tanh((narrowness * x - 1.) * curviness)) / 2.;
+            // mix between zero and sqrt, which has a nice sharp peak at x=zero
+            return mix(0., 1. - sqrt(abs(x)), ratio);
+        }
+
+        vec3 hsv2rgb(vec3 c) {
+            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+            vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+            return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+        }
+
+        vec4 getColour(vec2 pos) {
+            float h = mix(hue1, hue2, smoothstep(0., 1., length(pos)));
+            float s = smoothstep(satMin, satMax, length(pos));
+            float v = 1.;
+            float a = smoothstep(max(alphaMin, alphaMax), min(alphaMin, alphaMax), length(pos));
+            return vec4(hsv2rgb(vec3(h, s, v)), a);
+        }
+
+        void main() {
+            vec2 pos = 2. * (coords - .5);
+            // vec2 pos2 = pos / length(pos) + time / 2. + 100.;
+            // float x = cos(3.*atan(pos.x, pos.y));
+            // float x = octaveNoise2d(pos2, .5, 3, .9);
+            // float scale = 4. - spikey(x, 8., 2.) * 3.;
+            // vec2 newpos = pos * scale;
+            gl_FragColor = getColour(pos);
+        }
+        </script>
+        <script src="three.js"></script>
+        <script type="text/javascript" src="DAT.GUI.min.js"></script>
+        <script>
+        var noiseTexture = createNoiseTexture();
+        noiseTexture.needsUpdate = true;
+
+        var uniforms = {
+            time: {
+                value: 0
+            },
+            hue1: {
+                value: 0.19
+            },
+            hue2: {
+                value: 0.09
+            },
+            satMin: {
+                value: 0.1
+            },
+            satMax: {
+                value: 0.57
+            },
+            alphaMin: {
+                value: 0.2
+            },
+            alphaMax: {
+                value: 1
+            },
+            noiseTexture: {
+                value: noiseTexture
+            }
+        };
+
+        var gui = new DAT.GUI();
+        gui.add(uniforms.hue1, 'value').name('Hue 1').min(0).max(1);
+        gui.add(uniforms.hue2, 'value').name('Hue 2').min(0).max(1);
+        gui.add(uniforms.satMin, 'value').name('Saturation min').min(0).max(1);
+        gui.add(uniforms.satMax, 'value').name('Saturation max').min(0).max(1);
+        gui.add(uniforms.alphaMin, 'value').name('Alpha min').min(0).max(.99);
+        gui.add(uniforms.alphaMax, 'value').name('Alpha max').min(0).max(.99);
+
+        var textureLoader = new THREE.TextureLoader();
+        var bgTexture = textureLoader.load('street.jpg');
+        onTexturesLoaded();
+
+        function onTexturesLoaded() {
+            var windowWidth = 1200; // window.innerWidth
+            var windowHeight = 800; // window.innerHeight
+            var renderer = new THREE.WebGLRenderer();
+            renderer.autoClear = false;
+            renderer.setSize(windowWidth, windowHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Background.
+            var sceneBg = new THREE.Scene();
+            var camWidth = 10;
+            var camHeight = 10 * windowHeight / windowWidth;
+            var cameraBg = new THREE.OrthographicCamera(-camWidth / 2, camWidth / 2, camHeight / 2, -camHeight / 2, 1, 1000);
+
+            var textureMaterial = new THREE.MeshBasicMaterial({map: bgTexture});
+            // Prevent the ortho camera from messing up the depth buffer.
+            textureMaterial.depthTest = false;
+            textureMaterial.depthWrite = false;
+            var bgMesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(camWidth, camHeight), textureMaterial);
+            bgMesh.position.z = -100;
+            sceneBg.add(bgMesh);
+
+            // Foreground.
+            var scene = new THREE.Scene();
+            var camera = new THREE.PerspectiveCamera(75, windowWidth / windowHeight, 0.1, 1000);
+
+            var shaderMaterial = new THREE.ShaderMaterial({
+                vertexShader: document.getElementById('vertex-shader-src').textContent,
+                fragmentShader: document.getElementById('fragment-shader-src').textContent,
+                uniforms: uniforms,
+                transparent: true
+            });
+
+            var objects = [];
+            for (var i = 0; i < 10; i++) {
+                var obj = new THREE.Mesh(new THREE.PlaneBufferGeometry(1, 1), shaderMaterial);
+                obj.radius = 1 + Math.random() * 2;
+                obj.thetaOffset = Math.random() * 6;
+                obj.speed = (Math.random() + 1) * (Math.random() > 0.5 ? -1 : 1);
+                obj.position.y = Math.random() * 2 - 1;
+                scene.add(obj);
+                objects.push(obj);
+            }
+
+            camera.position.z = 0;
+
+            var clock = new THREE.Clock();
+
+            function render() {
+                requestAnimationFrame(render);
+                var theta = uniforms.time.value = clock.getElapsedTime();
+                for (var i = 0; i < objects.length; i++) {
+                    var obj = objects[i];
+                    obj.position.x = obj.radius * Math.cos(theta * obj.speed + obj.thetaOffset);
+                    obj.position.z = -5 - obj.radius * Math.sin(theta * obj.speed + obj.thetaOffset);
+                }
+                renderer.clear();
+                renderer.render(sceneBg, cameraBg);
+                renderer.render(scene, camera);
+            }
+            render();
+        }
+
+        function createNoiseTexture() {
+            var noiseArray = [];
+            for (var i = 0; i < 1024 * 1024; i++) {
+                var angle = 2 * Math.PI * Math.random();
+                noiseArray.push(127 + Math.sin(angle) * 127, 127 + Math.cos(angle) * 127, 0, 255);
+            }
+            return new THREE.DataTexture(new Uint8Array(noiseArray), 1024, 1024, THREE.RGBAFormat);
+        }
+        </script>
+    </body>
+</html>
