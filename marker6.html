@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset=utf-8>
+        <style>
+            body {
+                margin: 0;
+            }
+            canvas {
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <script type="text/x-shader" id="vertex-shader-src">
+        attribute float offset;
+        attribute float seed;
+        varying vec2 coords;
+        varying float vOffset;
+        varying float vSeed;
+
+        void main() {
+            coords = uv;
+            vOffset = offset;
+            vSeed = seed;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+        </script>
+        <!-- Useful function reference: http://patriciogonzalezvivo.com/2015/thebookofshaders/05/kynd.png -->
+        <script type="text/x-shader" id="fragment-shader-src">
+        uniform float time;
+        uniform float maxTime;
+        uniform float spreadSpeed;
+        uniform float noiseFreq;
+        uniform float noiseSize;
+        varying vec2 coords;
+        varying float vOffset;
+        varying float vSeed;
+
+        //
+        // Description : Array and textureless GLSL 2D/3D/4D simplex 
+        //               noise functions.
+        //      Author : Ian McEwan, Ashima Arts.
+        //  Maintainer : stegu
+        //     Lastmod : 20110822 (ijm)
+        //     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+        //               Distributed under the MIT License. See LICENSE file.
+        //               https://github.com/ashima/webgl-noise
+        //               https://github.com/stegu/webgl-noise
+        // 
+
+        vec3 mod289(vec3 x) {
+          return x - floor(x * (1.0 / 289.0)) * 289.0;
+        }
+
+        vec4 mod289(vec4 x) {
+          return x - floor(x * (1.0 / 289.0)) * 289.0;
+        }
+
+        vec4 permute(vec4 x) {
+          return mod289(((x*34.0)+1.0)*x);
+        }
+
+        vec4 taylorInvSqrt(vec4 r)
+        {
+          return 1.79284291400159 - 0.85373472095314 * r;
+        }
+
+        float snoise(vec3 v) { 
+          const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+          const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+          // First corner
+          vec3 i  = floor(v + dot(v, C.yyy) );
+          vec3 x0 =   v - i + dot(i, C.xxx) ;
+
+          // Other corners
+          vec3 g = step(x0.yzx, x0.xyz);
+          vec3 l = 1.0 - g;
+          vec3 i1 = min( g.xyz, l.zxy );
+          vec3 i2 = max( g.xyz, l.zxy );
+
+          //   x0 = x0 - 0.0 + 0.0 * C.xxx;
+          //   x1 = x0 - i1  + 1.0 * C.xxx;
+          //   x2 = x0 - i2  + 2.0 * C.xxx;
+          //   x3 = x0 - 1.0 + 3.0 * C.xxx;
+          vec3 x1 = x0 - i1 + C.xxx;
+          vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+          vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+
+        // Permutations
+          i = mod289(i); 
+          vec4 p = permute( permute( permute( 
+                     i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                   + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+                   + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+        // Gradients: 7x7 points over a square, mapped onto an octahedron.
+        // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+          float n_ = 0.142857142857; // 1.0/7.0
+          vec3  ns = n_ * D.wyz - D.xzx;
+
+          vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+
+          vec4 x_ = floor(j * ns.z);
+          vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+
+          vec4 x = x_ *ns.x + ns.yyyy;
+          vec4 y = y_ *ns.x + ns.yyyy;
+          vec4 h = 1.0 - abs(x) - abs(y);
+
+          vec4 b0 = vec4( x.xy, y.xy );
+          vec4 b1 = vec4( x.zw, y.zw );
+
+          //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
+          //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
+          vec4 s0 = floor(b0)*2.0 + 1.0;
+          vec4 s1 = floor(b1)*2.0 + 1.0;
+          vec4 sh = -step(h, vec4(0.0));
+
+          vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+          vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+          vec3 p0 = vec3(a0.xy,h.x);
+          vec3 p1 = vec3(a0.zw,h.y);
+          vec3 p2 = vec3(a1.xy,h.z);
+          vec3 p3 = vec3(a1.zw,h.w);
+
+        //Normalise gradients
+          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+          p0 *= norm.x;
+          p1 *= norm.y;
+          p2 *= norm.z;
+          p3 *= norm.w;
+
+        // Mix final noise value
+          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+          m = m * m;
+          return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
+                                        dot(p2,x2), dot(p3,x3) ) );
+        }
+
+        float onoise(vec3 v, float scale, float shrink) {
+          float n = snoise(v);
+          float sh = shrink;
+          for (int i = 0; i < 3; i++) {
+            v *= scale;
+            n += sh * snoise(v);
+            sh *= shrink;
+          }
+          return n;
+        }
+
+        vec3 cartToSpher(vec3 coords) {
+          float r = length(coords);
+          float lat = acos(coords.z / r);
+          float lng = atan(coords.y, coords.x);
+          return vec3(lng, lat, r);
+        }
+
+        vec3 spherToCart(vec2 longlat) {
+          float R = 1.;
+          float x = R * cos(longlat.y) * cos(longlat.x);
+          float y = R * cos(longlat.y) * sin(longlat.x);
+          float z = R * sin(longlat.y);
+          return vec3(x, y, z);
+        }
+
+        // Inverse orthographic projection from plane onto sphere.
+        vec2 invOrtho(vec2 coords, float lng0, float lat0) {
+          float R = 1.;
+          float len = length(coords);
+          float c = asin(len / R);
+          float lng = lng0 + atan(coords.x * sin(c), len * cos(c) * cos(lat0) - coords.y * sin(c) * sin(lat0));
+          float lat = asin(cos(c) * sin(lat0) + (coords.y == 0. ? 0. : (coords.y * sin(c) * cos(lat0) / len)));
+          return vec2(lng, lat);
+        }
+
+        void main() {
+            float t = time - vOffset;
+            vec2 pos = 2. * (coords - .5);
+            float radius = coords.y;
+            float alpha = 0.;
+            if (abs(pos.x) <= radius) {
+              //float theta = asin(pos.x / radius) + time;
+              //float x = cos(theta) * radius;
+              //float y = sin(theta) * radius;
+              //float value = onoise(vec3(x, y, pos.y - time / 5.), 2., .8) * smoothstep(1., .4, pos.y);
+
+              float freq = .3;
+              float rad = .1;
+              float v1 = pos.y - time / 2. + snoise(vec3(pos.y, pos.x, time)) / 10.;
+              float v2 = mod(v1, freq) / freq;
+              alpha = smoothstep(.5 - rad, .5, v2) *
+                smoothstep(.5 + rad, .5, v2) *
+                smoothstep(-radius, -radius + .05, pos.x) *
+                smoothstep(radius, radius - .05, pos.x);
+            }
+            gl_FragColor = vec4(1, 1, 1, alpha);
+        }
+        </script>
+        <script src="three.js"></script>
+        <script type="text/javascript" src="DAT.GUI.min.js"></script>
+        <script>
+        var uniforms = {
+            time: {
+                value: 0
+            },
+            maxTime: {
+                value: 2
+            },
+            spreadSpeed: {
+                value: 3
+            },
+            noiseFreq: {
+                value: 100
+            },
+            noiseSize: {
+                value: .03
+            }
+        };
+
+        var gui = new DAT.GUI();
+        gui.add(uniforms.maxTime, 'value').name('Delay').min(1).max(10);
+        gui.add(uniforms.spreadSpeed, 'value').name('Spread speed').min(1).max(10);
+        gui.add(uniforms.noiseFreq, 'value').name('Noise frequency').min(1).max(100);
+        gui.add(uniforms.noiseSize, 'value').name('Noise size').min(.01).max(1);
+
+        var textureLoader = new THREE.TextureLoader();
+        var bgTexture = textureLoader.load('street.jpg');
+        onTexturesLoaded();
+
+        function onTexturesLoaded() {
+            var windowWidth = 900; // window.innerWidth
+            var windowHeight = 900; // window.innerHeight
+            var renderer = new THREE.WebGLRenderer();
+            renderer.autoClear = false;
+            renderer.setSize(windowWidth, windowHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Background.
+            var sceneBg = new THREE.Scene();
+            var camWidth = 10;
+            var camHeight = 10 * windowHeight / windowWidth;
+            var cameraBg = new THREE.OrthographicCamera(-camWidth / 2, camWidth / 2, camHeight / 2, -camHeight / 2, 1, 1000);
+
+            var textureMaterial = new THREE.MeshBasicMaterial({map: bgTexture});
+            // Prevent the ortho camera from messing up the depth buffer.
+            textureMaterial.depthTest = false;
+            textureMaterial.depthWrite = false;
+            var bgMesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(camWidth, camHeight), textureMaterial);
+            bgMesh.position.z = -100;
+            sceneBg.add(bgMesh);
+
+            // Foreground.
+            var scene = new THREE.Scene();
+            var camera = new THREE.PerspectiveCamera(75, windowWidth / windowHeight, 0.1, 1000);
+
+            var shaderMaterial = new THREE.ShaderMaterial({
+                vertexShader: document.getElementById('vertex-shader-src').textContent,
+                fragmentShader: document.getElementById('fragment-shader-src').textContent,
+                uniforms: uniforms,
+                transparent: true
+            });
+
+            var objects = [];
+            for (var i = 0; i < 1; i++) {
+                geom = new THREE.PlaneBufferGeometry(2, 2);
+                var offset = Math.random() * uniforms.maxTime.value;
+                var offsets = new Float32Array([offset, offset, offset, offset]);
+                geom.addAttribute('offset', new THREE.BufferAttribute(offsets, 1));
+                var seed = Math.random() * 1000;
+                var seeds = new Float32Array([seed, seed, seed, seed]);
+                geom.addAttribute('seed', new THREE.BufferAttribute(seeds, 1));
+
+                var obj = new THREE.Mesh(geom, shaderMaterial);
+                obj.offset = offset;
+                var theta = Math.random() * 6;
+                var radius = 1 + Math.random() * 2;
+                obj.position.x = radius * Math.cos(theta);
+                obj.position.z = -5 - radius * Math.sin(theta);
+                obj.position.y = Math.random() * 2 - 2;
+                scene.add(obj);
+                objects.push(obj);
+            }
+
+            camera.position.z = 0;
+
+            var clock = new THREE.Clock();
+
+            function render() {
+                requestAnimationFrame(render);
+                var time = uniforms.time.value = clock.getElapsedTime() + 10;
+/*                for (var i = 0; i < objects.length; i++) {
+                    var obj = objects[i];
+                    var relativeTime = time - obj.offset;
+                    if (relativeTime > uniforms.maxTime.value) {
+                        obj.offset = time + Math.random() * uniforms.maxTime.value;
+                        // Using setXYZW to set a 4-valued array is a cheap t.
+                        obj.geometry.getAttribute('offset').setXYZW(0, obj.offset, obj.offset, obj.offset, obj.offset);
+                        obj.geometry.getAttribute('offset').needsUpdate = true;
+                        var theta = Math.random() * 6;
+                        var radius = 1 + Math.random() * 2;
+                        obj.position.x = radius * Math.cos(theta);
+                        obj.position.z = -5 - radius * Math.sin(theta);
+                        obj.position.y = Math.random() * 2 - 2;
+                        relativeTime = time - obj.offset;
+                    }
+                    if (relativeTime < 0) {
+                        obj.visible = false;
+                    }
+                    else {
+                        obj.visible = true;
+                    }
+                }
+*/                renderer.clear();
+                renderer.render(sceneBg, cameraBg);
+                renderer.render(scene, camera);
+            }
+            render();
+        }
+
+        function invOrtho(x, y, lng0, lat0) {
+          var R = 1.;
+          var len = Math.sqrt(x*x + y*y);
+          var c = Math.asin(len / R);
+          var lng = lng0 + Math.atan2(x * Math.sin(c), len * Math.cos(c) * Math.cos(lat0) - y * Math.sin(c) * Math.sin(lat0));
+          var lat = Math.asin(Math.cos(c) * Math.sin(lat0) +  y == 0 ? 0 : (y * Math.sin(c) * Math.cos(lat0) / len));
+          return [lng, lat];
+        }
+
+        function spherToCart(long, lat) {
+          var R = 1.;
+          var x = R * Math.cos(lat) * Math.cos(long);
+          var y = R * Math.cos(lat) * Math.sin(long);
+          var z = R * Math.sin(lat);
+          return [x, y, z];
+        }
+
+        function trans(x, y) {
+          var longlat = invOrtho(x, y, 0, 0);
+          console.log(longlat[0] * 180 / Math.PI, longlat[1] * 180 / Math.PI);
+          return spherToCart(longlat[0], longlat[1]);
+        }
+        </script>
+    </body>
+</html>
