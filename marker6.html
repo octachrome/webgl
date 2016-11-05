@@ -152,52 +152,46 @@
           return n;
         }
 
-        vec3 cartToSpher(vec3 coords) {
-          float r = length(coords);
-          float lat = acos(coords.z / r);
-          float lng = atan(coords.y, coords.x);
-          return vec3(lng, lat, r);
-        }
-
-        vec3 spherToCart(vec2 longlat) {
-          float R = 1.;
-          float x = R * cos(longlat.y) * cos(longlat.x);
-          float y = R * cos(longlat.y) * sin(longlat.x);
-          float z = R * sin(longlat.y);
-          return vec3(x, y, z);
-        }
-
-        // Inverse orthographic projection from plane onto sphere.
-        vec2 invOrtho(vec2 coords, float lng0, float lat0) {
-          float R = 1.;
-          float len = length(coords);
-          float c = asin(len / R);
-          float lng = lng0 + atan(coords.x * sin(c), len * cos(c) * cos(lat0) - coords.y * sin(c) * sin(lat0));
-          float lat = asin(cos(c) * sin(lat0) + (coords.y == 0. ? 0. : (coords.y * sin(c) * cos(lat0) / len)));
-          return vec2(lng, lat);
-        }
+        #define PI 3.1415926535898
 
         void main() {
             float t = time - vOffset;
             vec2 pos = 2. * (coords - .5);
-            float radius = coords.y;
-            float alpha = 0.;
-            if (abs(pos.x) <= radius) {
-              //float theta = asin(pos.x / radius) + time;
-              //float x = cos(theta) * radius;
-              //float y = sin(theta) * radius;
-              //float value = onoise(vec3(x, y, pos.y - time / 5.), 2., .8) * smoothstep(1., .4, pos.y);
 
-              float freq = .3;
-              float rad = .1;
-              float v1 = pos.y - time / 2. + snoise(vec3(pos.y, pos.x, time)) / 10.;
-              float v2 = mod(v1, freq) / freq;
-              alpha = smoothstep(.5 - rad, .5, v2) *
-                smoothstep(.5 + rad, .5, v2) *
-                smoothstep(-radius, -radius + .05, pos.x) *
-                smoothstep(radius, radius - .05, pos.x);
+            float height = 0.;
+            float radius = .9;
+            float rad = .06;
+
+            float theta;
+            float r = radius;
+            float alpha = 0.;
+            if (pos.x >= -radius && pos.x <= radius) {
+              theta = asin(pos.x / radius);
+              float ypos1 = height + snoise(vec3(cos(theta), sin(theta), time) * r) / 10.;
+              float ypos2 = height + snoise(vec3(-cos(theta), sin(theta), time) * r) / 10.;
+
+              alpha =
+                smoothstep(ypos1 - rad, ypos1, pos.y) *
+                smoothstep(ypos1 + rad, ypos1, pos.y) *
+                smoothstep(-radius, -radius + rad, pos.x) *
+                smoothstep(radius, radius - rad, pos.x) +
+                smoothstep(ypos2 - rad, ypos2, pos.y) *
+                smoothstep(ypos2 + rad, ypos2, pos.y) *
+                smoothstep(-radius, -radius + rad, pos.x) *
+                smoothstep(radius, radius - rad, pos.x);
+
+              if (pos.x <= -radius + rad && pos.y >= min(ypos1, ypos2) && pos.y <= max(ypos1, ypos2)) {
+                alpha =
+                  smoothstep(-radius, -radius + rad, pos.x) *
+                  smoothstep(radius, radius - rad, pos.x);
+              }
+              if (pos.x >= radius - rad && pos.y >= min(ypos1, ypos2) && pos.y <= max(ypos1, ypos2)) {
+                alpha =
+                  smoothstep(-radius, -radius + rad, pos.x) *
+                  smoothstep(radius, radius - rad, pos.x);
+              }
             }
-            gl_FragColor = vec4(1, 1, 1, alpha);
+            gl_FragColor = vec4(alpha, 0, 1 , 1);
         }
         </script>
         <script src="three.js"></script>
@@ -278,9 +272,9 @@
                 obj.offset = offset;
                 var theta = Math.random() * 6;
                 var radius = 1 + Math.random() * 2;
-                obj.position.x = radius * Math.cos(theta);
-                obj.position.z = -5 - radius * Math.sin(theta);
-                obj.position.y = Math.random() * 2 - 2;
+                obj.position.x = 0;// radius * Math.cos(theta);
+                obj.position.z = -2; // - radius * Math.sin(theta);
+                obj.position.y = 0; //Math.random() * 2 - 2;
                 scene.add(obj);
                 objects.push(obj);
             }
@@ -315,7 +309,7 @@
                     }
                 }
 */                renderer.clear();
-                renderer.render(sceneBg, cameraBg);
+                // renderer.render(sceneBg, cameraBg);
                 renderer.render(scene, camera);
             }
             render();
