@@ -26,10 +26,11 @@
 
   <body>
     <div id="container"></div>
-    <div id="info">Hold right mouse button to rotate</div>
+    <div id="info">Left-drag to select, right-drag to rotate</div>
 
     <script src="three.js"></script>
     <script src="OrbitControls.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 
     <script type="x-shader/x-vertex" id="vertexshader">
 
@@ -84,6 +85,7 @@
 
       var raycaster, intersects;
       var mouse, INTERSECTED, clock;
+      var dragging, path, prevIndices;
 
       init();
       animate();
@@ -127,6 +129,17 @@
         window.addEventListener( 'resize', onWindowResize, false );
         document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 
+        $(renderer.domElement).on('mousedown', function (event) {
+          if (event.button === THREE.MOUSE.LEFT) {
+            dragging = true;
+            path = [];
+            prevIndices = new Set();
+          }
+        });
+        $(window).on('mouseup', function () {
+          dragging = false;
+          console.log(path);
+        });
       }
 
       function createParticles(count) {
@@ -240,34 +253,20 @@
       }
 
       function updateIntersections() {
-        var geometry = particles.geometry;
-        var attributes = geometry.attributes;
+        if (dragging) {
+          raycaster.setFromCamera( mouse, camera );
+          intersects = raycaster.intersectObject( particles );
+          var indices = intersects.map(function (intersect) {
+            return intersect.index;
+          })
 
-        raycaster.setFromCamera( mouse, camera );
+          var newIndices = indices.filter(function (index) {
+            return !prevIndices.has(index);
+          });
+          path = path.concat(newIndices);
 
-        intersects = raycaster.intersectObject( particles );
-
-        if ( intersects.length > 0 ) {
-
-          if ( INTERSECTED != intersects[ 0 ].index ) {
-
-            attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * .5;
-
-            INTERSECTED = intersects[ 0 ].index;
-
-            attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
-            attributes.size.needsUpdate = true;
-
-          }
-
-        } else if ( INTERSECTED !== null ) {
-
-          attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * .5;
-          attributes.size.needsUpdate = true;
-          INTERSECTED = null;
-
+          prevIndices = new Set(indices);
         }
-
       }
 
       function updateTracer() {
