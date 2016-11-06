@@ -11,18 +11,29 @@
         margin: 0px;
         overflow: hidden;
       }
+      #info {
+        position: absolute;
+        top: 0px;
+        width: 100%;
+        padding: 5px;
+        font-family: Monospace;
+        font-size: 13px;
+        text-align: center;
+        font-weight: bold;
+      }
     </style>
   </head>
 
   <body>
     <div id="container"></div>
+    <div id="info">Hold right mouse button to rotate</div>
 
     <script src="three.js"></script>
     <script src="OrbitControls.js"></script>
 
     <script type="x-shader/x-vertex" id="vertexshader">
 
-      attribute float sz;
+      attribute float size;
       attribute vec3 customColor;
 
       varying vec3 vColor;
@@ -39,7 +50,7 @@
 
         vColor = hsv2rgb(vec3(.9 - 30. / mvPosition.z, 1.0, 200. / -mvPosition.z));
 
-        gl_PointSize = sz * ( 300.0 / -mvPosition.z );
+        gl_PointSize = size * ( 300.0 / -mvPosition.z );
 
         gl_Position = projectionMatrix * mvPosition;
 
@@ -71,17 +82,20 @@
 
       var renderer, scene, camera;
 
-      var particles, uniforms;
+      var particles, uniforms, tracer;
 
       var PARTICLE_SIZE = 20;
+      var PARTICLE_COUNT = 20;
+      var TRACER_SPEED = 1;
 
       var raycaster, intersects;
-      var mouse, INTERSECTED;
+      var mouse, INTERSECTED, clock;
 
       init();
       animate();
 
       function init() {
+        clock = new THREE.Clock();
 
         container = document.getElementById( 'container' );
 
@@ -90,53 +104,11 @@
         camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
         camera.position.z = 250;
 
-        var vertexCount = 20;
-
-        var positions = new Float32Array( vertexCount * 3 );
-        var colors = new Float32Array( vertexCount * 3 );
-        var sizes = new Float32Array( vertexCount );
-
-        var vertex;
-        var color = new THREE.Color();
-        var RADIUS = 100;
-
-        for ( var i = 0; i < vertexCount; i++ ) {
-          var theta = Math.PI * 2 * i / vertexCount;
-          positions[i * 3] = RADIUS * Math.sin(theta);
-          positions[i * 3 + 1] = RADIUS * Math.random() - RADIUS / 2;
-          positions[i * 3 + 2] = RADIUS * Math.cos(theta);
-
-          color.setHSL( 0.01 + 0.1 * 1, 1.0, 0.5 )
-          color.toArray( colors, i * 3 );
-
-          sizes[ i ] = PARTICLE_SIZE * 0.5;
-
-        }
-
-        var geometry = new THREE.BufferGeometry();
-        geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-        geometry.addAttribute( 'customColor', new THREE.BufferAttribute( colors, 3 ) );
-        geometry.addAttribute( 'sz', new THREE.BufferAttribute( sizes, 1 ) );
-
-        //
-
-        var material = new THREE.ShaderMaterial( {
-
-          uniforms: {
-            color:   { value: new THREE.Color( 0xffffff ) },
-            texture: { value: new THREE.TextureLoader().load( 'disc.png' ) }
-          },
-          vertexShader: document.getElementById( 'vertexshader' ).textContent,
-          fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
-
-          alphaTest: 0.9,
-
-        } );
-
-        //
-
-        particles = new THREE.Points( geometry, material );
+        particles = createParticles(PARTICLE_COUNT);
         scene.add( particles );
+
+        tracer = createTracer();
+        scene.add(tracer);
 
         //
 
@@ -153,7 +125,7 @@
         //
 
         raycaster = new THREE.Raycaster();
-        raycaster.params.PointCloud.threshold = 3;
+        raycaster.params.Points.threshold = 3;
         mouse = new THREE.Vector2();
 
         //
@@ -161,6 +133,91 @@
         window.addEventListener( 'resize', onWindowResize, false );
         document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 
+      }
+
+      function createParticles(count) {
+        var positions = new Float32Array( count * 3 );
+        var colors = new Float32Array( count * 3 );
+        var sizes = new Float32Array( count );
+
+        var vertex;
+        var color = new THREE.Color();
+        var RADIUS = 100;
+
+        for ( var i = 0; i < count; i++ ) {
+          var theta = Math.PI * 2 * i / count;
+          positions[i * 3] = RADIUS * Math.sin(theta);
+          positions[i * 3 + 1] = RADIUS * Math.random() - RADIUS / 2;
+          positions[i * 3 + 2] = RADIUS * Math.cos(theta);
+
+          color.setHSL( 0, 0, 0 ); // unused
+          color.toArray( colors, i * 3 );
+
+          sizes[ i ] = PARTICLE_SIZE * 0.5;
+
+        }
+
+        var geometry = new THREE.BufferGeometry();
+        geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+        geometry.addAttribute( 'customColor', new THREE.BufferAttribute( colors, 3 ) );
+        geometry.addAttribute( 'size', new THREE.BufferAttribute( sizes, 1 ) );
+
+        //
+
+        var material = new THREE.ShaderMaterial( {
+
+          uniforms: {
+            color:   { value: new THREE.Color( 0xffffff ) },
+            texture: { value: new THREE.TextureLoader().load( 'disc.png' ) }
+          },
+          vertexShader: document.getElementById( 'vertexshader' ).textContent,
+          fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+
+          alphaTest: 0.9,
+
+        } );
+
+        return new THREE.Points( geometry, material );
+      }
+
+      function createTracer() {
+        var positions = new Float32Array( 3 );
+        var colors = new Float32Array( 3 );
+        var sizes = new Float32Array( 1 );
+
+        var vertex;
+        var color = new THREE.Color();
+
+        positions[0] = 0;
+        positions[1] = 0;
+        positions[2] = 0;
+
+        color.setHSL( 0, 0, 0 ); // unused
+        color.toArray( colors, 0 );
+
+        sizes[0] = 10;
+
+        var geometry = new THREE.BufferGeometry();
+        geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+        geometry.addAttribute( 'customColor', new THREE.BufferAttribute( colors, 3 ) );
+        geometry.addAttribute( 'size', new THREE.BufferAttribute( sizes, 1 ) );
+
+        //
+
+        var material = new THREE.ShaderMaterial( {
+
+          uniforms: {
+            color:   { value: new THREE.Color( 0xffffff ) },
+            texture: { value: new THREE.TextureLoader().load( 'disc.png' ) }
+          },
+          vertexShader: document.getElementById( 'vertexshader' ).textContent,
+          fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+
+          alphaTest: 0.9,
+
+        } );
+
+        return new THREE.Points( geometry, material );
       }
 
       function onDocumentMouseMove( event ) {
@@ -186,11 +243,14 @@
         requestAnimationFrame( animate );
 
         controls.update();
-        render();
+
+        updateIntersections();
+        updateTracer();
+
+        renderer.render( scene, camera );
       }
 
-      function render() {
-
+      function updateIntersections() {
         var geometry = particles.geometry;
         var attributes = geometry.attributes;
 
@@ -202,27 +262,42 @@
 
           if ( INTERSECTED != intersects[ 0 ].index ) {
 
-            attributes.sz.array[ INTERSECTED ] = PARTICLE_SIZE * .5;
+            attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * .5;
 
             INTERSECTED = intersects[ 0 ].index;
 
-            attributes.sz.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
-            attributes.sz.needsUpdate = true;
+            attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
+            attributes.size.needsUpdate = true;
 
           }
 
         } else if ( INTERSECTED !== null ) {
 
-          attributes.sz.array[ INTERSECTED ] = PARTICLE_SIZE * .5;
-          attributes.sz.needsUpdate = true;
+          attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * .5;
+          attributes.size.needsUpdate = true;
           INTERSECTED = null;
 
         }
 
-        renderer.render( scene, camera );
-
       }
 
+      function updateTracer() {
+        var progress = clock.getElapsedTime() * TRACER_SPEED;
+        var point1 = Math.floor(progress % PARTICLE_COUNT);
+        var point2 = Math.floor((progress + 1) % PARTICLE_COUNT);
+        var t = progress % 1;
+
+        var particlePositions = particles.geometry.attributes.position;
+        var tracerPosition = tracer.geometry.attributes.position;
+
+        tracerPosition.array[0] =
+          t * particlePositions.array[point2 * 3] + (1 - t) * particlePositions.array[point1 * 3];
+        tracerPosition.array[1] =
+          t * particlePositions.array[point2 * 3 + 1] + (1 - t) * particlePositions.array[point1 * 3 + 1];
+        tracerPosition.array[2] =
+          t * particlePositions.array[point2 * 3 + 2] + (1 - t) * particlePositions.array[point1 * 3 + 2];
+        tracerPosition.needsUpdate = true;
+      }
     </script>
 
   </body>
