@@ -7,7 +7,7 @@ app.use(serveStatic(__dirname, {
     index: 'puzzle.html'
 }));
 
-server.listen(8080);
+server.listen(3000);
 
 var sockets = new Map();
 var users = new Map();
