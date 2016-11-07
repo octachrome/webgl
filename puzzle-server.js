@@ -26,6 +26,10 @@ io.on('connection', function (socket) {
     });
     notifyServerState();
 
+    socket.on('chat', function (msg) {
+        io.emit('chat', msg);
+    });
+
     socket.on('disconnect', function () {
         leaveGame(false);
         sockets.delete(socket.id);

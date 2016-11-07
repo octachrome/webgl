@@ -34,15 +34,33 @@
       .fullscreen {
         position: absolute;
         top: 0;
+        bottom: 200px;
+        left: 0;
+        right: 0;
+      }
+      .chat {
+        position: absolute;
         bottom: 0;
         left: 0;
         right: 0;
+        height: 200px;
+        padding: 20px;
+      }
+      .chatmessages {
+        background: #333;
+        height: 160px;
+        margin-bottom: 10px;
+        white-space: pre;
+        overflow: auto;
+      }
+      .chatbox input {
+        width: 100%;
       }
     </style>
   </head>
 
   <body>
-    <div class="fullscreen" style="display: none" data-bind="visible: $data">
+    <div style="display: none" data-bind="visible: $data">
       <div class="fullscreen" data-bind="visible: checkGameState('playing')">
         <div id="container"></div>
         <div id="info">Left-drag to select, right-drag to rotate</div>
@@ -65,6 +83,12 @@
         </ul>
         <p data-bind="visible: !readyToPlay()">Waiting for more players<p>
         <button data-bind="visible: readyToPlay(), click: startGame">Play!</button>
+      </div>
+      <div class="chat">
+        <div class="chatmessages"></div>
+        <div class="chatbox">
+          <input type="text" placeholder="Type a message to the other players">
+        </div>
       </div>
     </div>
 
@@ -168,6 +192,19 @@
       socket.on('message', function(msg) {
         if (msg.type === 'incorrectGuess') {
           showToast('Sorry, that is not correct');
+        }
+      });
+
+      socket.on('chat', function(msg) {
+        $('.chatmessages').text(
+          $('.chatmessages').text() + msg + '\n'
+        ).scrollTop(10000);
+      });
+
+      $('.chatbox input').on('keydown', function (event) {
+        if (event.keyCode === 13) {
+          socket.emit('chat', $(this).val());
+          $(this).val('');
         }
       });
 
