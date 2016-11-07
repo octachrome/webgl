@@ -40,6 +40,9 @@ io.on('connection', function (socket) {
         else if (command.command === 'leave') {
             leaveGame();
         }
+        else if (command.command === 'guess') {
+            makeGuess(command.path);
+        }
     });
 
     function startGame() {
@@ -72,7 +75,34 @@ io.on('connection', function (socket) {
             notifyServerState();
         }
     }
+
+    function makeGuess(path) {
+        var user = users.get(socket.id);
+        if (!user.inGame) {
+            return null;
+        }
+        var game = games.get(user.inGame);
+        var otherUserId = Object.keys(game.known).filter(function (userId) {
+            return userId !== user.id;
+        });
+        if (checkPathsEqual(path, game.known[otherUserId])) {
+            game.state = STATE_WON;
+            notifyServerState();
+        }
+        else {
+            socket.emit('message', {
+                type: 'incorrectGuess'
+            });
+        }
+    }
 });
+
+function checkPathsEqual(path1, path2) {
+    return (path1.length === path2.length) &&
+    path1.every(function (el, idx) {
+        return el === path2[idx];
+    });
+}
 
 function notifyServerState() {
     var sharedState = getSharedState();
@@ -122,10 +152,10 @@ function createGame(userIds) {
         ];
         points.push(point);
         if (i <= Math.floor(COUNT / 2)) {
-            known[userIds[0]].push(point);
+            known[userIds[0]].push(i);
         }
         if (i >= Math.floor(COUNT / 2)) {
-            known[userIds[1]].push(point);
+            known[userIds[1]].push(i);
         }
     }
 

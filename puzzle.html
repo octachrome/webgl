@@ -21,6 +21,16 @@
         text-align: center;
         font-weight: bold;
       }
+      #toast {
+        position: absolute;
+        top: 50px;
+        width: 100%;
+        padding: 5px;
+        font-family: Monospace;
+        font-size: 20px;
+        text-align: center;
+        font-weight: bold;
+      }
       .fullscreen {
         position: absolute;
         top: 0;
@@ -36,9 +46,10 @@
       <div class="fullscreen" data-bind="visible: checkGameState('playing')">
         <div id="container"></div>
         <div id="info">Left-drag to select, right-drag to rotate</div>
+        <div id="toast" data-bind="visible: toastMessage, text: toastMessage"></div>
       </div>
       <div class="fullscreen" data-bind="visible: checkGameState('won')">
-        <h1>Oh super! You did it!</h1>
+        <h1>OH YEAH! You did it.</h1>
         <button data-bind="click: leaveGame">Back</button>
       </div>
       <div class="fullscreen" data-bind="visible: checkGameState('abandoned')">
@@ -136,13 +147,28 @@
             points: [],
             known: []
           }
-        })
+        }),
+        toastMessage: ko.observable()
       };
       ko.applyBindings(vm);
 
+      var toastTimeout;
+      function showToast(msg) {
+        clearTimeout(toastTimeout);
+        vm.toastMessage(msg);
+        toastTimeout = setTimeout(function () {
+          vm.toastMessage(null);
+        }, 2000);
+      }
+
       socket.on('serverState', function(serverState) {
-        console.log(serverState);
         ko.mapping.fromJS(serverState, vm.serverState);
+      });
+
+      socket.on('message', function(msg) {
+        if (msg.type === 'incorrectGuess') {
+          showToast('Sorry, that is not correct');
+        }
       });
 
       vm.serverState.user.inGame.subscribe(function (inGame) {
@@ -226,7 +252,10 @@
         $(window).on('mouseup', function () {
           if (dragging) {
             dragging = false;
-            console.log(path);
+            socket.emit('command', {
+              command: 'guess',
+              path: path
+            });
           }
         });
       }
@@ -377,18 +406,23 @@
       function updateTracer() {
         var progress = clock.getElapsedTime() * TRACER_SPEED;
         var knownPoints = vm.serverState.game.known();
-        var point1 = Math.floor(progress % knownPoints.length);
-        var point2 = Math.floor((progress + 1) % knownPoints.length);
+        var points = vm.serverState.game.points();
+        var idx1 = Math.floor(progress % knownPoints.length);
+        var idx2 = Math.floor((progress + 1) % knownPoints.length);
+        var point1 = knownPoints[idx1];
+        var point2 = knownPoints[idx2];
         var t = progress % 1;
+
+        tracer.visible = (idx1 < idx2);
 
         var tracerPosition = tracer.geometry.attributes.position;
 
         tracerPosition.array[0] =
-          t * knownPoints[point2][0] + (1 - t) * knownPoints[point1][0];
+          t * points[point2][0] + (1 - t) * points[point1][0];
         tracerPosition.array[1] =
-          t * knownPoints[point2][1] + (1 - t) * knownPoints[point1][1];
+          t * points[point2][1] + (1 - t) * points[point1][1];
         tracerPosition.array[2] =
-          t * knownPoints[point2][2] + (1 - t) * knownPoints[point1][2];
+          t * points[point2][2] + (1 - t) * points[point1][2];
         tracerPosition.needsUpdate = true;
       }
     </script>
