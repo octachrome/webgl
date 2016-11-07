@@ -33,11 +33,19 @@
 
   <body>
     <div class="fullscreen" style="display: none" data-bind="visible: $data">
-      <div class="fullscreen" data-bind="visible: serverState.user.inGame">
+      <div class="fullscreen" data-bind="visible: checkGameState('playing')">
         <div id="container"></div>
         <div id="info">Left-drag to select, right-drag to rotate</div>
       </div>
-      <div class="fullscreen" data-bind="visible: !serverState.user.inGame()">
+      <div class="fullscreen" data-bind="visible: checkGameState('won')">
+        <h1>Oh super! You did it!</h1>
+        <button data-bind="click: leaveGame">Back</button>
+      </div>
+      <div class="fullscreen" data-bind="visible: checkGameState('abandoned')">
+        <h1>The other player left the game.</h1>
+        <button data-bind="click: leaveGame">Back</button>
+      </div>
+      <div class="fullscreen" data-bind="visible: checkGameState(null)">
         <p>Players online:</p>
         <ul>
           <!-- ko foreach: serverState.shared.connectedUsers -->
@@ -45,7 +53,7 @@
           <!-- /ko -->
         </ul>
         <p data-bind="visible: !readyToPlay()">Waiting for more players<p>
-        <button data-bind="visible: readyToPlay(), click: play">Play!</button>
+        <button data-bind="visible: readyToPlay(), click: startGame">Play!</button>
       </div>
     </div>
 
@@ -124,6 +132,7 @@
           },
           game: {
             id: null,
+            state: null,
             points: [],
             known: []
           }
@@ -132,6 +141,7 @@
       ko.applyBindings(vm);
 
       socket.on('serverState', function(serverState) {
+        console.log(serverState);
         ko.mapping.fromJS(serverState, vm.serverState);
       });
 
@@ -146,8 +156,25 @@
 
       init();
 
-      function play() {
-        socket.emit('play');
+      function startGame() {
+        socket.emit('command', {
+          command: 'start'
+        });
+      }
+
+      function leaveGame() {
+        socket.emit('command', {
+          command: 'leave'
+        });
+      }
+
+      function checkGameState(state) {
+        if (!vm.serverState.user.inGame()) {
+          return !state;
+        }
+        else {
+          return state === vm.serverState.game.state();
+        }
       }
 
       function readyToPlay() {

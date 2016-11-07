@@ -14,6 +14,10 @@ var users = new Map();
 var games = new Map();
 var nextGameId = 1;
 
+var STATE_PLAYING = 'playing';
+var STATE_WON = 'won';
+var STATE_ABANDONED = 'abandoned';
+
 io.on('connection', function (socket) {
     sockets.set(socket.id, socket);
     users.set(socket.id, {
@@ -23,12 +27,22 @@ io.on('connection', function (socket) {
     notifyServerState();
 
     socket.on('disconnect', function () {
+        leaveGame(false);
         sockets.delete(socket.id);
         users.delete(socket.id);
         notifyServerState();
     });
 
-    socket.on('play', function () {
+    socket.on('command', function (command) {
+        if (command.command === 'start') {
+            startGame();
+        }
+        else if (command.command === 'leave') {
+            leaveGame();
+        }
+    });
+
+    function startGame() {
         var sender = users.get(socket.id);
         if (!sender || sender.inGame) {
             return;
@@ -42,7 +56,22 @@ io.on('connection', function (socket) {
             sender.inGame = availablePlayers[0].inGame = game.id;
             notifyServerState();
         }
-    });
+    }
+
+    function leaveGame(notify) {
+        var user = users.get(socket.id);
+        if (!user.inGame) {
+            return null;
+        }
+        var game = games.get(user.inGame);
+        if (game.state === STATE_PLAYING) {
+            game.state = 'abandoned';
+        }
+        user.inGame = null;
+        if (notify !== false) {
+            notifyServerState();
+        }
+    }
 });
 
 function notifyServerState() {
@@ -59,7 +88,7 @@ function notifyServerState() {
 function getUserGame(userId) {
     var user = users.get(userId);
     if (!user.inGame) {
-        return null;
+        return {};
     }
     var game = games.get(user.inGame);
     var userGame = Object.assign({}, game);
@@ -84,7 +113,7 @@ function createGame(userIds) {
     var RADIUS = 100;
     var COUNT = 7;
 
-    for ( var i = 0; i < COUNT; i++ ) {
+    for (var i = 0; i < COUNT; i++) {
         var theta = Math.PI * i / COUNT;
         var point = [
             RADIUS * Math.sin(theta),
@@ -103,6 +132,7 @@ function createGame(userIds) {
     return {
         id: gameId,
         points: points,
-        known: known
+        known: known,
+        state: STATE_PLAYING
     };
 }
