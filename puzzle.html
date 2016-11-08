@@ -31,6 +31,16 @@
         text-align: center;
         font-weight: bold;
       }
+      #won {
+        position: absolute;
+        top: 50px;
+        width: 100%;
+        padding: 5px;
+        font-family: Monospace;
+        font-size: 20px;
+        text-align: center;
+        font-weight: bold;
+      }
       .fullscreen {
         position: absolute;
         top: 0;
@@ -61,12 +71,12 @@
 
   <body>
     <div style="display: none" data-bind="visible: $data">
-      <div class="fullscreen" data-bind="visible: checkGameState('playing')">
+      <div class="fullscreen" data-bind="visible: checkGameState('playing') || checkGameState('won')">
         <div id="container"></div>
         <div id="info">Left-drag to select, right-drag to rotate</div>
         <div id="toast" data-bind="visible: toastMessage, text: toastMessage"></div>
       </div>
-      <div class="fullscreen" data-bind="visible: checkGameState('won')">
+      <div id="won" data-bind="visible: checkGameState('won')">
         <h1>OH YEAH! You did it.</h1>
         <button data-bind="click: leaveGame">Back</button>
       </div>

@@ -91,6 +91,7 @@ io.on('connection', function (socket) {
         });
         if (checkPathsEqual(path, game.known[otherUserId])) {
             game.state = STATE_WON;
+            game.known[user.id] = game.known[otherUserId] = stitchPaths(game.known);
             notifyServerState();
         }
         else {
@@ -100,6 +101,16 @@ io.on('connection', function (socket) {
         }
     }
 });
+
+function stitchPaths(known) {
+    var userIds = Object.keys(known);
+    if (known[userIds[0]][0] === known[userIds[1]][known[userIds[1]].length - 1]) {
+        return known[userIds[1]].concat(known[userIds[0]].slice(1));
+    }
+    else {
+        return known[userIds[0]].concat(known[userIds[1]].slice(1));
+    }
+}
 
 function checkPathsEqual(path1, path2) {
     return (path1.length === path2.length) &&
