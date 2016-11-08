@@ -109,9 +109,9 @@
 
         vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
 
-        vColor = customColor * 200. / -mvPosition.z;
+        vColor = customColor * 30. / -mvPosition.z;
 
-        gl_PointSize = size * 300. / -mvPosition.z;
+        gl_PointSize = size * 100. / -mvPosition.z;
 
         gl_Position = projectionMatrix * mvPosition;
 
@@ -254,7 +254,7 @@
         scene = new THREE.Scene();
 
         camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
-        camera.position.z = 250;
+        camera.position.z = 50;
 
         //
 

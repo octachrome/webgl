@@ -138,30 +138,22 @@ function getSharedState() {
 
 function createGame(userIds) {
     var gameId = nextGameId++;
-    var points = [];
+
+    var points = [
+        [ -2.541088342666626, -5.156558513641357, 8.448569297790527 ],
+        [ 1.5879571437835693, 0, 2.8919732570648193 ],
+        [ -0.46678072214126587, 0, 11.104351997375488 ],
+        [ -4.280584812164307, 5.69348669052124, 5.833005428314209 ],
+        [ 0, 5.793156147003174, -19.617412567138672 ],
+        [ 0, -1.4556063413619995, -9.070512771606445 ],
+        [ -2.4474260807037354, 10.168652534484863, -3.876271963119507 ],
+        [ 6.863487720489502, -6.391308784484863, -2.0551981925964355 ],
+        [ 2.720376968383789, 14.794974327087402, -10.951457977294922 ]
+    ];
+
     var known = {};
-    userIds.forEach(function (id) {
-        known[id] = [];
-    });
-
-    var RADIUS = 100;
-    var COUNT = 7;
-
-    for (var i = 0; i < COUNT; i++) {
-        var theta = Math.PI * i / COUNT;
-        var point = [
-            RADIUS * Math.sin(theta),
-            RADIUS * Math.random() - RADIUS / 2,
-            RADIUS * Math.cos(theta)
-        ];
-        points.push(point);
-        if (i <= Math.floor(COUNT / 2)) {
-            known[userIds[0]].push(i);
-        }
-        if (i >= Math.floor(COUNT / 2)) {
-            known[userIds[1]].push(i);
-        }
-    }
+    known[userIds[0]] = [1, 0, 2, 3, 1, 7];
+    known[userIds[1]] = [7, 5, 6, 8, 4];
 
     return {
         id: gameId,
